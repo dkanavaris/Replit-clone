@@ -10,10 +10,14 @@
 </head>
 <body>
 
-	<%= error %>
 	<div class = "main_container">
 		<div class = "form_container">
 			<h1>Welcome to Replit Clone</h1>
+			<% if(error !== ""){ %>
+				<div class = "error_container">
+					<h2><%= error %></h2>
+				</div>
+			<%}%>
 			<form method="POST" action="/sign-up">
 				<input type ="email" name="email" placeholder="Email" size="25">
 				<input type="text" name="username" placeholder="Username" size="25">

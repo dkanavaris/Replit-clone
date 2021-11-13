@@ -12,6 +12,10 @@
 
 }
 
+.error_container{
+    background-color: red;
+}
+
 .form_container{
     background-color: rgb(124, 171, 212);
     display: flex;
