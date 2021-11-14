@@ -12,6 +12,7 @@ const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const loginRouter = require('./routes/login');
 const signupRouter = require('./routes/sign-up');
+const mainPageRouter = require("./routes/main-page");
 
 /* Connect to DB*/
 const mongoDb = process.env.DB_URL;
@@ -26,10 +27,16 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 /* Use passport for authentication */
-app.use(session({ secret: "cats", resave: false, saveUninitialized: true }));
+app.use(session({ secret: "cats", resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));
+
+/* Store the current user to a local variable */
+app.use(function(req, res, next) {
+	res.locals.currentUser = req.user;
+	next();
+});
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -41,6 +48,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/login', loginRouter);
 app.use('/sign-up', signupRouter);
+app.use('/main-page', mainPageRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

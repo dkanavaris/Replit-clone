@@ -46,7 +46,6 @@ passport.deserializeUser(function(id, done) {
 
 
 router.use(function(req, res, next){
-	res.locals.currentUser = req.user;
 	res.locals.error = req.flash('error');
 	next();	
 });
@@ -57,8 +56,8 @@ router.use(flash());
 router.get('/', login_controller.login_controller_get);
 
 router.post('/', passport.authenticate('local',  {
-	successRedirect: '/',
-	failureRedirect: '/login',
+	successRedirect: '/main-page',
+	failureRedirect: '/',
 	failureFlash: true 
 	})
 );
