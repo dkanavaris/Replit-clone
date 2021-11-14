@@ -15,7 +15,9 @@
 			<h1>Welcome to Replit Clone</h1>
 			<% if(error !== ""){ %>
 				<div class = "error_container">
-					<h2><%= error %></h2>
+					<div class = "message">
+						<%= error %>
+					</div>
 				</div>
 			<%}%>
 			<form method="POST" action="/sign-up">

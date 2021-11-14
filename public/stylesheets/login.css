@@ -12,10 +12,6 @@
 
 }
 
-.error_container{
-    background-color: red;
-}
-
 .form_container{
     background-color: rgb(124, 171, 212);
     display: flex;
@@ -24,6 +20,18 @@
     align-items: center;
 }
 
+.error_container{
+    background-color: rgba(255, 0, 0, 0.5);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.message{
+    font-size: 25px;
+    font-weight: 700;
+    color: #36393f;
+    text-align: center;
+}
 
 form{
     display: flex;
@@ -67,7 +75,7 @@ form button:hover{
 }
 
 .form_container h1{
-    margin-bottom: 80px;
+    margin-bottom: 40px;
 }
 
 .image_container img{
