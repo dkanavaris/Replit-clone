@@ -8,4 +8,4 @@ To connect to the database create an enviroment file(.env) and assing the url of
 a variable called DB_URL.
 
 To start the server run "npm start" or you can run "npm run devstart" to start the server with nodemon
-so if any change occus in the source no server restarting is neccessary.
+so if any change occus in the source no server restarting is neccessary
