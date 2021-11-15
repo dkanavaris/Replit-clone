@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Besley:ital,wght@0,400;1,900&display=swap');
+
+body {
+    margin: 0;
+    background: #eee;
+    font-family: Besley, serif;
+}
+
+.header {
+    background: white;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 0 8px rgba(0,0,0,.1);
+  
+    display: flex;
+    padding: 8px;
+    align-items: center;
+    justify-content: space-between;
+}
+  
+.profile-image {
+    background: rgb(48, 140, 177);
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,.5);
+    border-radius: 50%;
+    width: 48px;
+    height:  48px;
+}
+  
+.logo {
+    color: rgb(48, 140, 177);;
+    font-size: 32px;
+    font-weight: 900;
+    font-style: italic;
+}
+
+.left,
+.right{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+
+
+
+.main-body{
+    display: flex;
+    height: 100vh;
+    align-items: stretch;
+}
+
+.project-view{
+    background-color: rgb(118, 118, 189);
+    flex-grow: 0.2;
+}
+
+.code-editing {
+    display: flex;
+    align-items: stretch;
+    flex-grow: 2;
+    background-color: rgb(226, 125, 125);
+}
+
+.code-editing textarea{
+    font-size: 20px;
+    flex-grow: 2;
+}
