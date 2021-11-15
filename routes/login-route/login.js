@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
-const User = require("../mongoose-models/user_model");
-const login_controller = require("../controllers/login/login_controller.js");
+const User = require("../../mongoose-models/user_model");
+const login_controller = require("../../controllers/login/login_controller.js");
 const bcrypt = require("bcrypt");
 const flash = require("connect-flash");
 

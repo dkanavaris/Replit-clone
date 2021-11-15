@@ -9,10 +9,9 @@ const mongoose = require("mongoose");
 require('dotenv').config()
 
 const indexRouter = require('./routes/index');
-const usersRouter = require('./routes/users');
-const loginRouter = require('./routes/login');
-const signupRouter = require('./routes/sign-up');
-const mainPageRouter = require("./routes/main-page");
+const loginRouter = require('./routes/login-route/login');
+const signupRouter = require('./routes/login-route/sign-up');
+const mainPageRouter = require("./routes/main-page-route/main-page");
 
 /* Connect to DB*/
 const mongoDb = process.env.DB_URL;
@@ -45,7 +44,6 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/login', loginRouter);
 app.use('/sign-up', signupRouter);
 app.use('/main-page', mainPageRouter);
