@@ -2,6 +2,9 @@ const User_Model = require("../../mongoose-models/user_model");
 const bcrypt = require("bcrypt");
 const fs = require("fs");
 const resolve = require("path").resolve;
+
+//TODO: Add this to an enviroment variable and let
+//      resolve calculate the absolute path
 let dir = "..\\..\\..\\users\\"
 
 exports.sign_up_controller_get = function(req, res){
@@ -40,18 +43,21 @@ exports.sign_up_controller_post = async function(req, res){
 
     /* Generate a hashed password to store in DB */
     const hashed_password = bcrypt.hashSync(password, 10);
-
+    
+    /* Get the dir absolute path */
+    dir += username;
+    dir = resolve(__dirname + dir);
+    
     const User = new User_Model({
         username: req.body.username,
         password: hashed_password,
-        email : req.body.email
+        email : req.body.email,
+        directory : dir
     }).save(err => {
         if (err) { 
             return next(err);
         }
         /* Create a directory where the user will store projects */
-        dir += username;
-        dir = resolve(__dirname + dir);
         fs.mkdirSync(dir);
         res.redirect("/");
     });
