@@ -1,5 +1,8 @@
 const User_Model = require("../../mongoose-models/user_model");
 const bcrypt = require("bcrypt");
+const fs = require("fs");
+const resolve = require("path").resolve;
+let dir = "..\\..\\..\\users\\"
 
 exports.sign_up_controller_get = function(req, res){
     res.render("sign-up", {error : ""});
@@ -46,6 +49,11 @@ exports.sign_up_controller_post = async function(req, res){
         if (err) { 
             return next(err);
         }
+        /* Create a directory where the user will store projects */
+        dir += username;
+        dir = resolve(__dirname + dir);
+        fs.mkdirSync(dir);
         res.redirect("/");
     });
+
 }
