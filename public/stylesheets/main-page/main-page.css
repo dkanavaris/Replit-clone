@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Besley:ital,wght@0,400;1,900&display=swap');
-
 body {
     margin: 0;
     background: #eee;
@@ -39,28 +38,24 @@ body {
   gap: 16px;
 }
 
-
-
-
 .main-body{
-    display: flex;
+    display: grid;
+    grid-template-columns: 15% 1fr;
     height: 100vh;
-    align-items: stretch;
 }
 
 .project-view{
     background-color: rgb(118, 118, 189);
-    flex-grow: 0.2;
-}
-
-.code-editing {
-    display: flex;
-    align-items: stretch;
-    flex-grow: 2;
-    background-color: rgb(226, 125, 125);
 }
 
 .code-editing textarea{
+    background-color: whitesmoke;
+    height: 100%;
+    width: 100%;
     font-size: 20px;
-    flex-grow: 2;
+}
+
+.open-files button{
+    font-size: 18px;
+    text-align: center;
 }
