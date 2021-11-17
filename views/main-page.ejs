@@ -9,7 +9,6 @@
 		<link rel='stylesheet' href='/stylesheets/main-page/main-page.css' />
 	</head>
 	<body>
-
 		<div class = "header">
 			<div class = "left">
 				<div class = "logo">
@@ -22,21 +21,23 @@
 				<div class = "profile-image"></div>
 			</div>
 		</div>
-		
 		<div class = "main-body">
-			<div class = "project-view">
-				Here is the project view
-			</div>
-			<div class = "code-editing">
-				<div class = "open-files">
-					<button>hello.c</button>
-					<button>world.c</button>
-					<button>test.c</button>
-				</div>
-				<textarea id="html" placeholder="HTML"></textarea>
-			</div>
+			<button id="create-button">Create a new Project</button>
+			<button id="open-button">Open an existing project</button>
+		</div>
 
+		<div class = "modal">
+			<div class = "modal-content">
+				<span class="close-modal">&times;</span>
+				<form method="POST" action="/main-page/">
+					<label for ="project-name">Project Name: 
+						<input id="project-name" name="project_name" type="text">
+					</label>
+					<button type="submit">Create new project</button>
+				</form>
+			</div>
 		</div>
 	</body>
+	<script src="/scripts/main-page/modal.js"></script>
 
 </html>

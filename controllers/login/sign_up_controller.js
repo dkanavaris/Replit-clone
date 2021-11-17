@@ -5,6 +5,8 @@ const resolve = require("path").resolve;
 
 //TODO: Add this to an enviroment variable and let
 //      resolve calculate the absolute path
+// Mabe remove await in post with promise all.
+
 let dir = "..\\..\\..\\users\\"
 
 exports.sign_up_controller_get = function(req, res){

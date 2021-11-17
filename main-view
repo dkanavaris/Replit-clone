@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		
+		<title>Replit Clone</title>
+		<link rel='stylesheet' href='/stylesheets/main-page/main-page.css' />
+	</head>
+	<body>
+
+		<div class = "header">
+			<div class = "left">
+				<div class = "logo">
+					Replit Clone
+					Welcome back <%= currentUser.username%>
+				</div>
+			</div>
+
+			<div class = "right">
+				<div class = "profile-image"></div>
+			</div>
+		</div>
+		
+		<div class = "main-body">
+			<div class = "project-view">
+				Here is the project view
+			</div>
+			<div class = "code-editing">
+				<div class = "open-files">
+					<button>hello.c</button>
+					<button>world.c</button>
+					<button>test.c</button>
+				</div>
+				<textarea id="html" placeholder="HTML"></textarea>
+			</div>
+
+		</div>
+	</body>
+
+</html>
+
+
+
+========================STYLE======================================
+@import url('https://fonts.googleapis.com/css2?family=Besley:ital,wght@0,400;1,900&display=swap');
+body {
+    margin: 0;
+    background: #eee;
+    font-family: Besley, serif;
+}
+
+.header {
+    background: white;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 0 8px rgba(0,0,0,.1);
+  
+    display: flex;
+    padding: 8px;
+    align-items: center;
+    justify-content: space-between;
+}
+  
+.profile-image {
+    background: rgb(48, 140, 177);
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,.5);
+    border-radius: 50%;
+    width: 48px;
+    height:  48px;
+}
+  
+.logo {
+    color: rgb(48, 140, 177);;
+    font-size: 32px;
+    font-weight: 900;
+    font-style: italic;
+}
+
+.left,
+.right{
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.main-body{
+    display: grid;
+    grid-template-columns: 15% 1fr;
+    height: 100vh;
+}
+
+.project-view{
+    background-color: rgb(118, 118, 189);
+}
+
+.code-editing textarea{
+    background-color: whitesmoke;
+    height: 100%;
+    width: 100%;
+    font-size: 20px;
+}
+
+.open-files button{
+    font-size: 18px;
+    text-align: center;
+}
