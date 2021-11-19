@@ -16,7 +16,6 @@ exports.main_page_get = function(req, res){
     let projects = fs.readFileSync(json_path);
     projects = JSON.parse(projects);
 
-    console.log(projects);
     res.render("main-page", {projects: projects});
 }
 
