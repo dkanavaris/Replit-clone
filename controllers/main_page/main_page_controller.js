@@ -9,7 +9,15 @@ exports.main_page_get = function(req, res){
         res.redirect("login");
         return;
     }
-    res.render("main-page");
+
+    const json_path = res.locals.currentUser.directory + "\\" + "projects.json"
+    
+    let json_file = require(json_path);
+    let projects = fs.readFileSync(json_path);
+    projects = JSON.parse(projects);
+
+    console.log(projects);
+    res.render("main-page", {projects: projects});
 }
 
 exports.main_page_create_project = async function(req, res){
