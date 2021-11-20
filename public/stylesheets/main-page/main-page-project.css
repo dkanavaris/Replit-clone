@@ -1,7 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Besley:ital,wght@0,400;1,900&display=swap');
+*{
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
 body {
     margin: 0;
     background: #eee;
+    overflow: hidden;
+    overflow-y: scroll;
     font-family: Besley, serif;
 }
 
@@ -50,10 +58,12 @@ body {
     background-color: rgb(118, 118, 189);
 }
 
-.code-editing textarea{
+textarea{
     background-color: whitesmoke;
     height: 100%;
     width: 100%;
+    overflow-y: scroll;
+    resize: none;
     font-size: 20px;
 }
 
