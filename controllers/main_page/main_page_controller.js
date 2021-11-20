@@ -1,8 +1,8 @@
 const Project = require("../../mongoose-models/project_model");
 const fs = require("fs");
-const bcrypt = require("bcrypt");
 
 //TODO: change path delimiter to work on all systems
+//TODO: Remove fs Sync functions.
 
 exports.main_page_get = async function(req, res){
     
@@ -38,46 +38,37 @@ exports.main_page_create_project = async function(req, res){
 
     const project_path = res.locals.currentUser.directory + "\\" + req.body.project_name;
 
-    let project_id = res.locals.currentUser.username + req.body.project_name;
-    //project_id = bcrypt.hashSync(project_id, 3);
-    
-    bcrypt.hash(project_id , 3, (err, hashed_id) => {
+
+    const new_project = new Project({
+        owner : res.locals.currentUser.username,
+        project_id : hashed_id,
+        path : project_path,
+        name : req.body.project_name  
+    }).save(err =>{
         if(err){
-            console.log("Error during hashing project id");
-            redirect("/main-page");
+            return next(err);
         }
+    
+        /* Create the directory for the project */
+        fs.mkdirSync(project_path);
+    
+        /*Add the project to user's json file containing shared and owned projects */
+        let obj = {
+            project_name : req.body.project_name,
+            project_owner : res.locals.currentUser.username,
+            project_path : project_path
+        };
+    
+        const json_path = res.locals.currentUser.directory + "\\" + "projects.json"
 
-        const new_project = new Project({
-            owner : res.locals.currentUser.username,
-            project_id : hashed_id,
-            path : project_path,
-            name : req.body.project_name  
-        }).save(err =>{
-            if(err){
-                return next(err);
-            }
+        if(!fs.existsSync(json_path)){
+            fs.writeFileSync(json_path, "[]");
+        }
     
-            /* Create the directory for the project */
-            fs.mkdirSync(project_path);
+        let json_file = require(json_path);
+        json_file.push(obj);
+        fs.writeFileSync(json_path, JSON.stringify(json_file));
     
-            /*Add the project to user's json file containing shared and owned projects */
-            let obj = {
-                project_name : req.body.project_name,
-                project_owner : res.locals.currentUser.username,
-                project_path : project_path
-            };
-    
-            const json_path = res.locals.currentUser.directory + "\\" + "projects.json"
-
-            if(!fs.existsSync(json_path)){
-                fs.writeFileSync(json_path, "[]");
-            }
-    
-            let json_file = require(json_path);
-            json_file.push(obj);
-            fs.writeFileSync(json_path, JSON.stringify(json_file));
-    
-            res.redirect("/main-page");
+        res.redirect("/main-page");
         });
-    });
 }

@@ -5,7 +5,7 @@ const resolve = require("path").resolve;
 
 //TODO: Add this to an enviroment variable and let
 //      resolve calculate the absolute path
-// Mabe remove await in post with promise all.
+//TODO: Remove fs Sync functions.
 
 let dir = "..\\..\\..\\users\\"
 
