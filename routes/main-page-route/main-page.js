@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/:username/:project_name", function(req, res){
 
-    res.send("Navigated to " + req.params.username + " " + req.params.project_name);
+    res.render("main-page-project", {project_name: req.params.project_name});
 })
 
 
