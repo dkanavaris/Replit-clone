@@ -7,7 +7,7 @@ const resolve = require("path").resolve;
 //      resolve calculate the absolute path
 //TODO: Remove fs Sync functions.
 
-let dir = "..\\..\\..\\users\\"
+const master_dir = "..\\..\\..\\users\\"
 
 exports.sign_up_controller_get = function(req, res){
     res.render("sign-up", {error : ""});
@@ -47,7 +47,7 @@ exports.sign_up_controller_post = async function(req, res){
     const hashed_password = bcrypt.hashSync(password, 10);
     
     /* Get the dir absolute path */
-    dir += username;
+    let dir = master_dir + username;
     dir = resolve(__dirname + dir);
     
     const User = new User_Model({
