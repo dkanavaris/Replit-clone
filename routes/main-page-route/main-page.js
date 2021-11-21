@@ -9,6 +9,11 @@ router.get("/:username/:project_name", function(req, res){
 })
 
 
+router.get('/update', function(req, res) {
+    console.log("Got update request");
+    return;
+});
+
 /* GET users listing. */
 router.get('/', main_page_controller.main_page_get);
 
