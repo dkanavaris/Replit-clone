@@ -26,8 +26,27 @@
 		
 		<div class = "main-body">
 			<div class = "project-view">
-				Here is the project view
+				<div class="project-actions">
+
+						<button id="file_plus">
+							<img src="/images/project-actions-icons/icon-file-plus.svg">
+						</button>
+
+						<button id="folder_plus">
+							<img src="/images/project-actions-icons/icon-folder-plus.svg">
+						</button>
+						
+						<div class="form-container">
+							<form style="display: none;" class="myform" method="POST">
+								<input id="form_input_name" type="text">
+								<button type="Submit">Create</button>
+							</form>
+						</div>
+				</div>
+
+
 			</div>
+
 			<div class = "code-editing">
 				<div class = "open-files">
 					<button>hello.c</button>
@@ -37,4 +56,5 @@
 		</div>
 	</body>
 
+	<script src="/scripts/main-project/form-submit.js"></script>
 </html>
