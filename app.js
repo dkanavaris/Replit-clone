@@ -12,6 +12,7 @@ const indexRouter = require('./routes/index');
 const loginRouter = require('./routes/login-route/login');
 const signupRouter = require('./routes/login-route/sign-up');
 const mainPageRouter = require("./routes/main-page-route/main-page");
+const projectRouter = require("./routes/project-route/project");
 
 /* Connect to DB*/
 const mongoDb = process.env.DB_URL;
@@ -47,6 +48,7 @@ app.use('/', indexRouter);
 app.use('/login', loginRouter);
 app.use('/sign-up', signupRouter);
 app.use('/main-page', mainPageRouter);
+app.use('/@', projectRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

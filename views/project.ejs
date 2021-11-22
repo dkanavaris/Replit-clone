@@ -44,7 +44,10 @@
 						</div>
 				</div>
 
-
+				<% project_files.forEach(file => {%>
+					<% link = url + "/" + file %>
+					<a href=><%= file %></a>
+				<%});%>
 			</div>
 
 			<div class = "code-editing">

@@ -33,5 +33,11 @@ exports.main_page_project = async function(req, res){
     /* Else store the current project path to a local 
      * variable and redirect to project page. */
     res.locals.curerntProjectPath = project_path.path;
-    res.render("main-page-project", {project_name: project_name});
+
+    /* Read all the files from the project directory */
+
+    const files = fs.readdirSync(project_path.path);
+    console.log(files);
+    console.log(req.url);
+    res.render("project", {url: req.url, project_name: project_name, project_files: files});
 }

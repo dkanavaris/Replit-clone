@@ -28,7 +28,7 @@
 				Open an existing Project
 				<ul>
 					<% for(let i=0; i < projects.length; i++) { %>
-					<% let link = "/main-page/@" + projects[i].project_owner + "/" + projects[i].project_name;%>
+					<% let link = "/@/" + projects[i].project_owner + "/" + projects[i].project_name;%>
 					<li><a href=<%=link%>><%=projects[i].project_name %></a></li>
 					<%}%>
 				</ul>
