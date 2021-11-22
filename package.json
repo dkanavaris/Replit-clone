@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"start": "node ./bin/www",
-		"devstart": "nodemon ./bin/www"
+		"devstart": "nodemon ./bin/www --ignore users/"
 	},
 	"dependencies": {
 		"axios": "^0.24.0",
