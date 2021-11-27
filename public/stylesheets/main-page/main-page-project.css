@@ -84,13 +84,13 @@ textarea{
     align-items: center;
 }
 
-.myform input{
+.input-container input{
     font-size: 16px;
     width: 80%;
     height: 25px;
 }
 
-.myform button{
+.input-container button{
     border: 2px solid black;
     border-radius: 2px;
     width: 20%;

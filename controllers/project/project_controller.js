@@ -3,12 +3,12 @@ const fs = require("fs");
 
 exports.project_file_create = function(req, res){
     console.log("Will create file: " + req.params.filename);
-    res.redirect("back");
+    res.json({test: "test"});
 }
 
 exports.project_folder_create = function(req, res){
     console.log("Will create folder: " + req.params.foldername);
-    res.redirect("back");
+    res.json({test: "test"});
 }
 
 exports.main_page_project = async function(req, res){
