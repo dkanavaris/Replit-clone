@@ -36,13 +36,14 @@
 							<img src="/images/project-actions-icons/icon-folder-plus.svg">
 						</button>
 						
-						<div class="form-container">
-							<form style="display: none;" class="myform" method="POST">
-								<input id="form_input_name" type="text">
-								<button type="Submit">Create</button>
-							</form>
+						<div class="input-container" style="display: none;">
+							<input id="input_text" type="text">
+							<button id="create">Create</button>
 						</div>
 				</div>
+				
+				
+				<button id="my_button">Test button</button>
 
 				<% project_files.forEach(file => {%>
 					<% link = url + "/" + file %>
@@ -60,4 +61,5 @@
 	</body>
 
 	<script src="/scripts/main-project/form-submit.js"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </html>

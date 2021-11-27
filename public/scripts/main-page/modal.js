@@ -6,6 +6,7 @@ button.addEventListener("click", open_modal);
 
 /* Display the modal */
 function open_modal() {
+	console.log("Modal");
 	modal.style.display = "block";
 }
 

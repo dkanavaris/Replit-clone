@@ -1,30 +1,42 @@
 const file_add_button = document.querySelector("#file_plus");
 const folder_add_button = document.querySelector("#folder_plus");
-const myform = document.getElementsByClassName("myform")[0];
-//TODO: add check if filename and foldername
+const create_button = document.querySelector("#create");
+const input_text = document.querySelector("#input_text");
+const input_container = document.querySelector(".input-container");
+//Type holds the information if there is a file or
+// a directory created
+let type = "";
+//TODO: add check if filename and foldername exist?
+
 
 file_add_button.addEventListener("click", add_file);
 folder_add_button.addEventListener("click", add_folder);
+create_button.addEventListener("click", make_request);
+
+function make_request(){
+    console.log("Axios clicked");
+    let text = input_text.value;
+    if(type == "file"){
+        axios({
+            method: 'post',
+            url: window.location.href + "/file_create/" + text,
+        });
+    }
+    else{
+        axios({
+            method: 'post',
+            url: window.location.href + "/folder_create/" + text,
+        });
+    }
+    input_container.style.display = "none";
+}
 
 function add_file(){
-    myform.style.display = "block"
-    myform.addEventListener('submit', function(s) {
-        s.preventDefault();
-        let text = form_input_name.value;
-        this.action = window.location.href + "/file_create/" + text;
-        this.submit();
-        myform.style.display = "none";
-    });
+    input_container.style.display = "block"
+    type = "file";
 }
 
 function add_folder(){
-    myform.style.display = "block"
-    myform.addEventListener('submit', function(s) {
-        s.preventDefault();
-        let text = form_input_name.value;
-        console.log(window.location.href + "/folder_create/" + text);
-        this.action = window.location.href + "/folder_create/" + text;
-        this.submit();
-        myform.style.display = "none";
-    });
+    input_container.style.display = "block"
+    type = "folder";
 }
