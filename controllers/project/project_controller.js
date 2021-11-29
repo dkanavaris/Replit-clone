@@ -1,5 +1,6 @@
 const Project = require("../../mongoose-models/project_model");
 const fs = require("fs");
+const path = require('path');
 
 exports.project_file_create = function(req, res){
     console.log("Will create file: " + req.params.filename);
@@ -37,7 +38,34 @@ exports.main_page_project = async function(req, res){
     /* Read all the files from the project directory */
 
     const files = fs.readdirSync(project_path.path);
+    let tree = dirTree(project_path.path);
+    console.log(tree);
+
+    tree = JSON.stringify(tree);
+    console.log(tree);
+
     console.log(files);
-    console.log(req.url);
+
     res.render("project", {url: req.url, project_name: project_name, project_files: files});
+}
+
+function dirTree(filename) {
+    var stats = fs.lstatSync(filename),
+        info = {
+            path: filename,
+            name: path.basename(filename)
+        };
+ 
+    if (stats.isDirectory()) {
+        info.type = "folder";
+        info.children = fs.readdirSync(filename).map(function(child) {
+            return dirTree(filename + '/' + child);
+        });
+    } else {
+        // Assuming it's a file. In real life it could be a symlink or
+        // something else!
+        info.type = "file";
+    }
+ 
+    return info;
 }
