@@ -42,10 +42,10 @@
 						</div>
 				</div>
 				
-				<% project_files.forEach(file => {%>
-					<% link = url + "/" + file %>
-					<a href=><%= file %></a>
-				<%});%>
+				<div class = "file_view">
+						<%= JSON.stringify(project_files)%>
+				</div>
+
 			</div>
 
 			<div class = "code-editing">
@@ -58,5 +58,6 @@
 	</body>
 
 	<script src="/scripts/main-project/form-submit.js"></script>
+	<script src="/scripts/main-project/create-file-view.js"></script>
 	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </html>

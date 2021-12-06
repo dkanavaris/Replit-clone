@@ -63,6 +63,15 @@ body {
     border: none;
 }
 
+.file_view{
+    display: flex;
+    flex-direction: column;
+}
+
+.file{
+    margin-bottom: 5%;
+}
+
 textarea{
     background-color: whitesmoke;
     height: 100%;

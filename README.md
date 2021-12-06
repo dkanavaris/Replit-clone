@@ -13,3 +13,5 @@ a variable called DB_URL.
 
 To start the server run "npm start" or you can run "npm run devstart" to start the server with nodemon
 so if any change occus in the source no server restarting is neccessary.
+
+Icons used are from : https://tabler-icons.io/

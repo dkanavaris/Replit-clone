@@ -39,16 +39,33 @@ exports.main_page_project = async function(req, res){
 
     const files = fs.readdirSync(project_path.path);
     let tree = dirTree(project_path.path);
-    console.log(tree);
+    //console.log(tree);
 
-    tree = JSON.stringify(tree);
-    console.log(tree);
+    //tree = JSON.stringify(tree);
+    let total_contents = [];
+    tree_contents(total_contents, tree);
 
-    console.log(files);
-
-    res.render("project", {url: req.url, project_name: project_name, project_files: files});
+    res.render("project", {url: req.url, project_name: project_name, project_files: total_contents});
 }
 
+
+function tree_contents(total_contents, tree){
+
+    if(tree.children && tree.children.length != 0){
+
+        for(child = 0; child < tree.children.length; child++){
+            
+            total_contents.push(tree.children[child]);
+
+            if(tree.children[child].children){
+                (tree_contents(total_contents, tree.children[child]));
+            }
+        }
+    }
+}
+
+/* Returns the contents of filename if filename is a directory ,or the
+ * the info of the file otherwise */
 function dirTree(filename) {
     var stats = fs.lstatSync(filename),
         info = {
@@ -59,11 +76,9 @@ function dirTree(filename) {
     if (stats.isDirectory()) {
         info.type = "folder";
         info.children = fs.readdirSync(filename).map(function(child) {
-            return dirTree(filename + '/' + child);
+            return dirTree(filename + '\\' + child);
         });
     } else {
-        // Assuming it's a file. In real life it could be a symlink or
-        // something else!
         info.type = "file";
     }
  
