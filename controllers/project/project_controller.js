@@ -39,9 +39,7 @@ exports.main_page_project = async function(req, res){
 
     const files = fs.readdirSync(project_path.path);
     let tree = dirTree(project_path.path);
-    //console.log(tree);
 
-    //tree = JSON.stringify(tree);
     let total_contents = [];
     tree_contents(total_contents, tree);
 
@@ -51,15 +49,14 @@ exports.main_page_project = async function(req, res){
 
 function tree_contents(total_contents, tree){
 
-    if(tree.children && tree.children.length != 0){
-
-        for(child = 0; child < tree.children.length; child++){
+    if(tree.children){
+        for(let child = 0; child < tree.children.length; child++){
             
+            console.log(tree.children[child]);
             total_contents.push(tree.children[child]);
 
-            if(tree.children[child].children){
-                (tree_contents(total_contents, tree.children[child]));
-            }
+            if(tree.children[child].children)
+                tree_contents(total_contents, tree.children[child]);
         }
     }
 }

@@ -9,8 +9,10 @@ data.forEach(entry => {
     
     let file = document.createElement("div");
     file.className = "file";
+    file.id = "test";
     
     let img = document.createElement("img");
+
     if(entry.type == 'file')
         img.src = "/images/project-contents/tabler-icon-file.svg"
     else
