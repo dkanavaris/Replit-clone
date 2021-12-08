@@ -12,6 +12,10 @@ exports.project_folder_create = function(req, res){
     res.json({test: "test"});
 }
 
+exports.get_project_files = function(req, res){
+    res.json(dirTree(req.app.locals.currentProjectPath));
+}
+
 exports.main_page_project = async function(req, res){
 
     /* If user is not logged in redirect him to log in */
@@ -33,11 +37,11 @@ exports.main_page_project = async function(req, res){
 
     /* Else store the current project path to a local 
      * variable and redirect to project page. */
-    res.locals.curerntProjectPath = project_path.path;
+    req.app.locals.currentProjectPath = project_path.path;
 
-    let tree = dirTree(project_path.path);
+    
 
-    res.render("project", {url: req.url, project_name: project_name, project_files: JSON.stringify(tree.children)});
+    res.render("project", {url: req.url, project_name: project_name});
 }
 
 /* Returns the contents of filename if filename is a directory ,or the

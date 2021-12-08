@@ -1,17 +1,27 @@
 const project_files = document.querySelector(".file_view");
-const data =  JSON.parse(project_files.innerHTML);
+
 
 /* Erase the data from file view */
 project_files.innerHTML = "";
 
-//FIXME: remove this
-console.log(data);
+
+async function get_data(){
+    let data = await axios({
+        method: 'post',
+        url: window.location.href + "/get_files",
+    });
+
+    /* Return a promise with the data */
+    return data;
+}
 
 window.onload = (event) => {
-    update_file_view(project_files, data, "block");
+    get_data().then(response => 
+        {update_file_view(project_files, response.data.children, "block");})
 };
 
 function update_file_view(parent, data, display){
+    
     data.forEach(entry => {
     
         let item = document.createElement("div");
@@ -34,13 +44,6 @@ function update_file_view(parent, data, display){
         let name_span = document.createElement("span");
         name_span.textContent = entry.name;
         
-
-        
-        /* TODO: if an entry has children create a new sub-div and
-         * call update_file_view(new_div, entry.children, "hidden") to 
-         * to add the children files and directories under the parent directory.
-         * On return add an event listener which toggles the visiblity on and off.
-         * */
         if(entry.children){
 
             let chevron = document.createElement("img");
@@ -64,6 +67,7 @@ function update_file_view(parent, data, display){
             //Add an event listener for the folder
             img.addEventListener("click", toggle_children);
             name_span.addEventListener("click", toggle_children);
+            chevron.addEventListener("click", toggle_children);
         }
 
         else{
@@ -86,9 +90,6 @@ function toggle_children(e){
 
     /* The 4 child of a folder is the sub directory hence the index 3 */
     let sub_div = e.target.parentNode.children[3].children;
-    
-    //FIXME: remove this
-    //console.log(sub_div);
 
     /* Rotate the chevron to indicate that a directory was clicked */
     let chevron = e.target.parentNode.children[0];
