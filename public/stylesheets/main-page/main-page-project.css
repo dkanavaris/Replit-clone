@@ -68,10 +68,18 @@ body {
     flex-direction: column;
 }
 
-.file{
+.file,
+.folder{
     margin-bottom: 5%;
 }
 
+.file img, span{
+    cursor: pointer;
+}
+
+.folder img, span{
+    cursor: pointer;
+}
 textarea{
     background-color: whitesmoke;
     height: 100%;

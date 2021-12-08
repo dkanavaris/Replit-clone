@@ -35,30 +35,9 @@ exports.main_page_project = async function(req, res){
      * variable and redirect to project page. */
     res.locals.curerntProjectPath = project_path.path;
 
-    /* Read all the files from the project directory */
-
-    const files = fs.readdirSync(project_path.path);
     let tree = dirTree(project_path.path);
 
-    let total_contents = [];
-    tree_contents(total_contents, tree);
-
-    res.render("project", {url: req.url, project_name: project_name, project_files: total_contents});
-}
-
-
-function tree_contents(total_contents, tree){
-
-    if(tree.children){
-        for(let child = 0; child < tree.children.length; child++){
-            
-            console.log(tree.children[child]);
-            total_contents.push(tree.children[child]);
-
-            if(tree.children[child].children)
-                tree_contents(total_contents, tree.children[child]);
-        }
-    }
+    res.render("project", {url: req.url, project_name: project_name, project_files: JSON.stringify(tree.children)});
 }
 
 /* Returns the contents of filename if filename is a directory ,or the
