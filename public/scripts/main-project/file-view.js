@@ -29,14 +29,12 @@ function update_file_view(parent, data, display){
         else
             img.src = "/images/project-contents/tabler-icon-folder.svg"
         
-        
+
+
         let name_span = document.createElement("span");
         name_span.textContent = entry.name;
-    
-        item.appendChild(img);
-        item.appendChild(name_span);
         
-        item.style.display = display;
+
         
         /* TODO: if an entry has children create a new sub-div and
          * call update_file_view(new_div, entry.children, "hidden") to 
@@ -44,7 +42,16 @@ function update_file_view(parent, data, display){
          * On return add an event listener which toggles the visiblity on and off.
          * */
         if(entry.children){
+
+            let chevron = document.createElement("img");
+            chevron.src = "/images/project-contents/tabler-icon-chevron-right.svg";
+            item.appendChild(chevron);
+            item.appendChild(img);
+            item.appendChild(name_span);
+
+            
             /* Create a sub-div*/
+
             let sub_div = document.createElement("div");
             sub_div.className = "sub_div";
             sub_div.id = "sub_test"
@@ -60,28 +67,41 @@ function update_file_view(parent, data, display){
         }
 
         else{
+            item.appendChild(img);
+            item.appendChild(name_span);
             //Add an event listener for the file
             //img.addEventListener("click", display_children);
             //name_span.addEventListener("click", display_children);
         }
-
+        
+        item.style.display = display;
         parent.appendChild(item);
     });
 }
 
 /* Event listener function use to toggle on and off the display of a directory contents */
 function toggle_children(e){
-    e.preventDefault();
+
     e.stopPropagation();
 
-    /* The 3 child of a folder is the sub directory hence the index 2 */
-    let sub_div = e.target.parentNode.children[2].children;
-    console.log(sub_div);
+    /* The 4 child of a folder is the sub directory hence the index 3 */
+    let sub_div = e.target.parentNode.children[3].children;
+    
+    //FIXME: remove this
+    //console.log(sub_div);
 
+    /* Rotate the chevron to indicate that a directory was clicked */
+    let chevron = e.target.parentNode.children[0];
+    if(chevron.style.transform == "rotate(90deg)")
+        chevron.style.transform = `rotate(0deg)`;
+    else
+        chevron.style.transform = `rotate(90deg)`;
+
+    /* Toggle on or off the display of the children */
     for(let j = 0; j < sub_div.length; j++){
         if(sub_div[j].style.display == "none")
                 sub_div[j].style.display = "block";
-            else
+        else
             sub_div[j].style.display = "none";
     }
 }
