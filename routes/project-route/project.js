@@ -3,7 +3,9 @@ const express = require('express');
 const  project_controller = require('../../controllers/project/project_controller');
 const router = express.Router();
 
-router.post("/:username/:project_name/get_files", project_controller.get_project_files);
+router.get("/:username/:project_name/get_file/:path*", project_controller.get_file);
+
+router.get("/:username/:project_name/get_project_files", project_controller.get_project_files);
 
 router.post("/:username/:project_name/file_create/:filename", project_controller.project_file_create);
 

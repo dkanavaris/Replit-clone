@@ -5,22 +5,32 @@ const project_files = document.querySelector(".file_view");
 project_files.innerHTML = "";
 
 
-async function get_data(){
+async function get_project_data(){
     let data = await axios({
-        method: 'post',
-        url: window.location.href + "/get_files",
+        method: 'get',
+        url: window.location.href + "/get_project_files",
     });
 
     /* Return a promise with the data */
     return data;
 }
 
+async function get_file_data(filepath){
+
+    let data = await axios({
+        method: 'get',
+        url: window.location.href + "/get_file/" + filepath,
+    });
+
+    return data;
+}
+
 window.onload = (event) => {
-    get_data().then(response => 
-        {update_file_view(project_files, response.data.children, "block");})
+    get_project_data().then(response => 
+        {update_file_view(project_files, "", response.data.children, "block");})
 };
 
-function update_file_view(parent, data, display){
+function update_file_view(parent_div, parent_dir,  data, display){
     
     data.forEach(entry => {
     
@@ -31,7 +41,8 @@ function update_file_view(parent, data, display){
         else
             item.className = "folder";
 
-    
+        item.id = parent_dir  +  entry.name;
+
         let img = document.createElement("img");
     
         if(entry.type == 'file')
@@ -62,7 +73,7 @@ function update_file_view(parent, data, display){
             
 
             //Call update_file_view on the sub div and children data
-            update_file_view(sub_div, entry.children, "none");
+            update_file_view(sub_div, item.id + "\\", entry.children, "none");
 
             //Add an event listener for the folder
             img.addEventListener("click", toggle_children);
@@ -73,13 +84,14 @@ function update_file_view(parent, data, display){
         else{
             item.appendChild(img);
             item.appendChild(name_span);
+
             //Add an event listener for the file
-            //img.addEventListener("click", display_children);
-            //name_span.addEventListener("click", display_children);
+            img.addEventListener("click", display_data);
+            name_span.addEventListener("click", display_data);
         }
         
         item.style.display = display;
-        parent.appendChild(item);
+        parent_div.appendChild(item);
     });
 }
 
@@ -107,4 +119,17 @@ function toggle_children(e){
     }
 }
 
-/**TODO: Create an event listener on files that make a post request to fetch the file contents. */
+/* Fetch the data of the file and display them on the editor */
+function display_data(e){
+
+    e.stopPropagation();
+
+    let filepath = e.target.parentNode.id;
+
+    const text_editor = document.querySelector("#editor");
+    get_file_data(filepath).then(response => {
+        console.log(response.data.file_data);
+        text_editor.value = response.data.file_data;
+    })
+
+}

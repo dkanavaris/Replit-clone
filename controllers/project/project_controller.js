@@ -12,6 +12,17 @@ exports.project_folder_create = function(req, res){
     res.json({test: "test"});
 }
 
+exports.get_file = function(req, res){
+
+
+    const filepath = req.app.locals.currentProjectPath + "\\" +
+                        req.params.path + req.params[0];
+
+    let file_data = fs.readFileSync(filepath, 'utf-8');
+
+    res.json({file_data: file_data});
+}
+
 exports.get_project_files = function(req, res){
     res.json(dirTree(req.app.locals.currentProjectPath));
 }
