@@ -129,7 +129,9 @@ function display_data(e){
     const text_editor = document.querySelector("#editor");
     get_file_data(filepath).then(response => {
         console.log(response.data.file_data);
-        text_editor.value = response.data.file_data;
+        text_editor.value =  response.data.file_data;
+        let myCodeMirror = CodeMirror.fromTextArea(text_editor);
+        myCodeMirror.save();
     })
 
 }
