@@ -9,7 +9,6 @@ body {
     margin: 0;
     background: #eee;
     overflow: hidden;
-    overflow-y: scroll;
     font-family: Besley, serif;
 }
 
@@ -50,12 +49,14 @@ body {
 
 .main-body{
     display: grid;
-    grid-template-columns: 15% 1fr;
-    height: 100vh;
+    grid-template-columns: 18% 1fr;
+    grid-template-rows: 1;
 }
 
 .project-view{
-    background-color: rgb(194, 194, 218);
+    background-color: rgb(175, 163, 230);
+    overflow-y: scroll !important;
+    height: 800px
 }
 
 .project-view button{
@@ -65,8 +66,7 @@ body {
 }
 
 .file_view{
-    display: flex;
-    flex-direction: column;
+
 }
 
 .file,
@@ -81,13 +81,12 @@ body {
 .folder img, span{
     cursor: pointer;
 }
-textarea{
+
+textarea,.CodeMirror, .cm-s-default{
     background-color: whitesmoke;
-    height: 100%;
-    width: 100%;
-    overflow-y: scroll;
-    resize: none;
     font-size: 20px;
+    height: 773px;
+    width: 1000px;
 }
 
 .open-files button{

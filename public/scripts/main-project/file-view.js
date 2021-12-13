@@ -1,5 +1,7 @@
 const project_files = document.querySelector(".file_view");
+CodeMirror.modeURL = "/codemirror/codemirror-5.64.0/mode/%N/%N.js"
 
+let myCodeMirror = null;
 
 /* Erase the data from file view */
 project_files.innerHTML = "";
@@ -127,11 +129,44 @@ function display_data(e){
     let filepath = e.target.parentNode.id;
 
     const text_editor = document.querySelector("#editor");
+
     get_file_data(filepath).then(response => {
-        console.log(response.data.file_data);
+
+        if(myCodeMirror != null)
+            myCodeMirror.toTextArea();
+
         text_editor.value =  response.data.file_data;
-        let myCodeMirror = CodeMirror.fromTextArea(text_editor);
-        myCodeMirror.save();
-    })
+        
+        myCodeMirror = CodeMirror.fromTextArea(text_editor,{
+            lineNumbers: true,
+        });
+        
+        let m, mode, spec;
+
+        if (m = /.+\.([^.]+)$/.exec(filepath)) {
+            let info = CodeMirror.findModeByExtension(m[1]);
+            if (info) {
+                mode = info.mode;
+                spec = info.mime;
+            }
+        } 
+        else if (/\//.test(filepath)) {
+            let info = CodeMirror.findModeByMIME(filepath);
+            if (info) {
+                mode = info.mode;
+                spec = val;
+            }
+        } 
+        else {
+            mode = spec = filepath;
+        }
+
+        if (mode) {
+            myCodeMirror.setOption("mode", spec);
+            CodeMirror.autoLoadMode(myCodeMirror, mode);
+        }
+        
+        myCodeMirror.setSize(1000 , 800);
+    });
 
 }
