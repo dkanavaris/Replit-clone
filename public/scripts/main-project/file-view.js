@@ -5,10 +5,19 @@ const project_files = document.querySelector(".file_view");
 CodeMirror.modeURL = "/codemirror/codemirror-5.64.0/mode/%N/%N.js"
 
 let myCodeMirror = null;
+let last_visited = null; // Holds the element that was last clicked.
+const HOVER_COLOR = "grey" // The hover color 
 
 /* Erase the data from file view */
 project_files.innerHTML = "";
 
+/* Event listener to choose the main project file */
+const project_view = document.querySelector(".project-view");
+project_view.addEventListener("click", function(e){
+    if(last_visited && last_visited != project_view)
+        last_visited.style.backgroundColor = "transparent";
+    last_visited = document.querySelector(".project-view");
+});
 
 async function get_project_data(){
     let data = await axios({
@@ -40,7 +49,9 @@ function update_file_view(parent_div, parent_dir,  data, display){
     data.forEach(entry => {
     
         let item = document.createElement("div");
-        
+        let contents = document.createElement("div");
+        contents.className = "contents";
+
         if(entry.type == 'file')
             item.className = "file";
         else
@@ -64,10 +75,11 @@ function update_file_view(parent_div, parent_dir,  data, display){
 
             let chevron = document.createElement("img");
             chevron.src = "/images/project-contents/tabler-icon-chevron-right.svg";
-            item.appendChild(chevron);
-            item.appendChild(img);
-            item.appendChild(name_span);
+            contents.appendChild(chevron);
+            contents.appendChild(img);
+            contents.appendChild(name_span);
 
+            item.appendChild(contents);
             
             /* Create a sub-div*/
 
@@ -81,18 +93,16 @@ function update_file_view(parent_div, parent_dir,  data, display){
             update_file_view(sub_div, item.id + "\\", entry.children, "none");
 
             //Add an event listener for the folder
-            img.addEventListener("click", toggle_children);
-            name_span.addEventListener("click", toggle_children);
-            chevron.addEventListener("click", toggle_children);
+            contents.addEventListener("click", toggle_children);
         }
 
         else{
-            item.appendChild(img);
-            item.appendChild(name_span);
+            contents.appendChild(img);
+            contents.appendChild(name_span);
+            item.appendChild(contents);
 
             //Add an event listener for the file
-            img.addEventListener("click", display_data);
-            name_span.addEventListener("click", display_data);
+            contents.addEventListener("click", display_data);
         }
         
         item.style.display = display;
@@ -105,11 +115,29 @@ function toggle_children(e){
 
     e.stopPropagation();
 
+    let contents;
+
+    /* Get the div with the contents. If a child of the div was
+     * clicked then contents is the parent of element clicked
+     * otherwise it's the element clicked */
+    if(e.target.className == "contents")
+        contents = e.target;
+    else
+        contents = e.target.parentNode;
+
+    /* Deactivate the previous clicked element and
+     * Show the element was clicked and store it to
+     * deactivate it on next click */
+    if(last_visited && last_visited != project_view)
+        last_visited.style.backgroundColor = "transparent";
+    last_visited = contents;
+    contents.style.backgroundColor = HOVER_COLOR;
+    
     /* The 4 child of a folder is the sub directory hence the index 3 */
-    let sub_div = e.target.parentNode.children[3].children;
+    let sub_div = contents.parentNode.children[1].children;
 
     /* Rotate the chevron to indicate that a directory was clicked */
-    let chevron = e.target.parentNode.children[0];
+    let chevron = contents.children[0];
     if(chevron.style.transform == "rotate(90deg)")
         chevron.style.transform = `rotate(0deg)`;
     else
@@ -127,9 +155,27 @@ function toggle_children(e){
 /* Fetch the data of the file and display them on the editor */
 function display_data(e){
 
-    e.stopPropagation();
 
-    let filepath = e.target.parentNode.id;
+    e.stopPropagation();
+    let contents;
+
+    /* Get the div with the contents. If a child of the div was
+     * clicked then contents is the parent of element clicked
+     * otherwise it's the element clicked */
+    if(e.target.className == "contents")
+        contents = e.target.parentNode;
+    else
+        contents = e.target.parentNode.parentNode;
+
+    /* Deactivate the previous clicked element and
+     * Show the element was clicked and store it to
+     * deactivate it on next click */
+    if(last_visited && last_visited != project_view)
+        last_visited.style.backgroundColor = "transparent";
+    last_visited = contents;
+    contents.style.backgroundColor = HOVER_COLOR;
+
+    let filepath = contents.id;
 
     const text_editor = document.querySelector("#editor");
 
@@ -153,16 +199,6 @@ function display_data(e){
                 spec = info.mime;
             }
         } 
-        else if (/\//.test(filepath)) {
-            let info = CodeMirror.findModeByMIME(filepath);
-            if (info) {
-                mode = info.mode;
-                spec = val;
-            }
-        } 
-        else {
-            mode = spec = filepath;
-        }
 
         if (mode) {
             myCodeMirror.setOption("mode", spec);

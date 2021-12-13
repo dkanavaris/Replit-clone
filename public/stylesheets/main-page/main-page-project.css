@@ -65,22 +65,17 @@ body {
     cursor: pointer;
 }
 
-.file_view{
-
-}
-
 .file,
 .folder{
     margin-bottom: 5%;
 }
 
-.file img, span{
+.contents:hover {
     cursor: pointer;
+    background-color: grey;
 }
 
-.folder img, span{
-    cursor: pointer;
-}
+
 
 textarea,.CodeMirror, .cm-s-default{
     background-color: whitesmoke;
