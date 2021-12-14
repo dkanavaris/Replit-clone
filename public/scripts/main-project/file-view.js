@@ -5,18 +5,17 @@ const project_files = document.querySelector(".file_view");
 CodeMirror.modeURL = "/codemirror/codemirror-5.64.0/mode/%N/%N.js"
 
 let myCodeMirror = null;
-let last_visited = null; // Holds the element that was last clicked.
+let last_visited = project_files; // Holds the element that was last clicked.
 const HOVER_COLOR = "grey" // The hover color 
 
 /* Erase the data from file view */
 project_files.innerHTML = "";
 
 /* Event listener to choose the main project file */
-const project_view = document.querySelector(".project-view");
-project_view.addEventListener("click", function(e){
-    if(last_visited && last_visited != project_view)
+project_files.addEventListener("click", function(e){
+    if(last_visited && last_visited != project_files)
         last_visited.style.backgroundColor = "transparent";
-    last_visited = document.querySelector(".project-view");
+    last_visited = project_files;
 });
 
 async function get_project_data(){
@@ -85,7 +84,7 @@ function update_file_view(parent_div, parent_dir,  data, display){
 
             let sub_div = document.createElement("div");
             sub_div.className = "sub_div";
-            sub_div.id = "sub_test"
+            sub_div.id = item.id;
             item.appendChild(sub_div);
             
 
@@ -128,7 +127,7 @@ function toggle_children(e){
     /* Deactivate the previous clicked element and
      * Show the element was clicked and store it to
      * deactivate it on next click */
-    if(last_visited && last_visited != project_view)
+    if(last_visited && last_visited != project_files)
         last_visited.style.backgroundColor = "transparent";
     last_visited = contents;
     contents.style.backgroundColor = HOVER_COLOR;
@@ -170,7 +169,7 @@ function display_data(e){
     /* Deactivate the previous clicked element and
      * Show the element was clicked and store it to
      * deactivate it on next click */
-    if(last_visited && last_visited != project_view)
+    if(last_visited && last_visited != project_files)
         last_visited.style.backgroundColor = "transparent";
     last_visited = contents;
     contents.style.backgroundColor = HOVER_COLOR;
@@ -235,24 +234,31 @@ file_add_button.addEventListener("click", add_file);
 folder_add_button.addEventListener("click", add_folder);
 create_button.addEventListener("click", create_request);
 
-async function create_request(){
+function create_request(){
 
     let text = input_text.value;
-    if(type == "file"){
-        const data = await axios({
-            method: 'post',
-            url: window.location.href + "/file_create/" + text,
-        });
+    let filepath;
 
+    if(last_visited.parentNode.id != "")
+        filepath = last_visited.parentNode.id + "\\" + text;
+    else
+        filepath = text;
+    
+    if(type == "file"){
+        axios({
+            method: 'post',
+            url: window.location.href + "/file_create/" + filepath,
+        });
     }
     else{
         axios({
             method: 'post',
-            url: window.location.href + "/folder_create/" + text,
+            url: window.location.href + "/folder_create/" + filepath,
         });
     }
 
     input_text.value = "";
+    file_input_visible = folder_input_visible = false;
     input_container.style.display = "none";
 }
 

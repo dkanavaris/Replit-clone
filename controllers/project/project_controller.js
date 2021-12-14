@@ -3,13 +3,18 @@ const fs = require("fs");
 const path = require('path');
 
 exports.project_file_create = function(req, res){
-    console.log("Will create file: " + req.params.filename);
-    res.json({test: "test"});
+
+    const filepath =  req.app.locals.currentProjectPath + "\\" +
+                    req.params.filepath + req.params[0];
+
+    fs.writeFileSync(filepath, "");
 }
 
 exports.project_folder_create = function(req, res){
-    console.log("Will create folder: " + req.params.foldername);
-    res.json({test: "test"});
+    const path =  req.app.locals.currentProjectPath + "\\" +
+    req.params.folderpath + req.params[0];
+
+    fs.mkdirSync(path);
 }
 
 exports.get_file = function(req, res){

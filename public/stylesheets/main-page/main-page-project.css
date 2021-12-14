@@ -59,6 +59,9 @@ body {
     height: 800px
 }
 
+.file_view {
+    height: 100%;
+}
 .project-view button{
     background-color: transparent;
     border: none;
