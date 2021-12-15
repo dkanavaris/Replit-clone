@@ -62,6 +62,7 @@ body {
 .file_view {
     height: 100%;
 }
+
 .project-view button{
     background-color: transparent;
     border: none;
@@ -90,6 +91,16 @@ textarea,.CodeMirror, .cm-s-default{
 .open-files button{
     font-size: 20px;
     text-align: center;
+}
+
+.input-error-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(255, 0, 0, 0.5);
+    width: 80%;
+
 }
 
 .input-container{

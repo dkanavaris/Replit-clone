@@ -40,10 +40,10 @@ async function get_file_data(filepath){
 
 window.onload = (event) => {
     get_project_data().then(response => 
-        {update_file_view(project_files, "", response.data.children, "block");})
+        {update_file_view(project_files, "", response.data.children, "block", 1);})
 };
 
-function update_file_view(parent_div, parent_dir,  data, display){
+function update_file_view(parent_div, parent_dir,  data, display, margin_left){
     
     data.forEach(entry => {
     
@@ -89,7 +89,7 @@ function update_file_view(parent_div, parent_dir,  data, display){
             
 
             //Call update_file_view on the sub div and children data
-            update_file_view(sub_div, item.id + "\\", entry.children, "none");
+            update_file_view(sub_div, item.id + "\\", entry.children, "none", 10 + margin_left);
 
             //Add an event listener for the folder
             contents.addEventListener("click", toggle_children);
@@ -105,6 +105,7 @@ function update_file_view(parent_div, parent_dir,  data, display){
         }
         
         item.style.display = display;
+        item.style.marginLeft = `${margin_left}px`;
         parent_div.appendChild(item);
     });
 }
@@ -217,6 +218,7 @@ const folder_add_button = document.querySelector("#folder_plus");
 const create_button = document.querySelector("#create");
 const input_text = document.querySelector("#input_text");
 const input_container = document.querySelector(".input-container");
+const input_error_container = document.querySelector(".input-error-container");
 
 /* Type holds the information if there is a file or
  * a directory created */
@@ -227,23 +229,71 @@ let file_input_visible = false;
 let folder_input_visible = false;
 let prev_visible;
 
-//TODO: add check if filename and foldername exist?
 
 
 file_add_button.addEventListener("click", add_file);
 folder_add_button.addEventListener("click", add_folder);
 create_button.addEventListener("click", create_request);
+input_text.addEventListener("input", check_input);
+
+function show_input_error(text){
+    let error_msg = `${text} already exists`
+    input_error_container.textContent = error_msg;
+    input_error_container.style.display = "flex";
+
+    create_button.disabled = true;
+}
+
+function hide_input_error(type){
+    input_error_container.style.display = "none";
+    create_button.disabled = false;
+}
+
+function check_input(e){
+    let text = input_text.value;
+    let dir;
+
+    if(last_visited.parentNode.id != ""){
+        dir = last_visited.parentNode.children[1].children;
+    }
+    else{
+        dir = last_visited.children;
+    }
+
+    for(let i = 0; i < dir.length; i++){
+        //Search for the file or folder name.
+        let name;
+        let m = dir[i].id.match(/[\\\\](.*)/);
+        if(m)
+            name = m[1];
+        else
+            name = dir[i].id;
+        
+        console.log(name == text);
+        if(name == text && type == dir[i].className){
+            show_input_error(text);
+            return;
+        }
+        else{
+            hide_input_error();
+        }
+    }
+}
 
 function create_request(){
 
     let text = input_text.value;
-    let filepath;
+    let filepath, dir;
 
-    if(last_visited.parentNode.id != "")
+    if(last_visited.parentNode.id != ""){
         filepath = last_visited.parentNode.id + "\\" + text;
-    else
+        dir = last_visited.parentNode.children[1].children;
+    }
+    else{
         filepath = text;
-    
+        dir = last_visited.children;
+    }
+
     if(type == "file"){
         axios({
             method: 'post',
@@ -273,14 +323,16 @@ function add_file(){
     
     /* Update the prev_visible variable */
     prev_visible = "file";
+    type = "file";
 
-    if(file_input_visible)
+    if(file_input_visible){
         input_container.style.display = "flex";
+        check_input(this);
+    }
     else
         input_container.style.display = "none";
 
 
-    type = "file";
 }
 
 function add_folder(){
@@ -294,11 +346,13 @@ function add_folder(){
     
     /* Update the prev_visible variable */
     prev_visible = "folder";    
+    type = "folder";
 
-    if(folder_input_visible)
+    if(folder_input_visible){
         input_container.style.display = "flex";
+        check_input(this);
+    }
     else
         input_container.style.display = "none";
     
-    type = "folder";
 }
