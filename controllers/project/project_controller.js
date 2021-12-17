@@ -1,20 +1,33 @@
 const Project = require("../../mongoose-models/project_model");
 const fs = require("fs");
 const path = require('path');
+//TODO: add semaphores so multiple users cannot save,create,delete togethen
 
-exports.project_file_create = function(req, res){
+exports.file_create = function(req, res){
 
     const filepath =  req.app.locals.currentProjectPath + "\\" +
                     req.params.filepath + req.params[0];
 
     fs.writeFileSync(filepath, "");
+
+    res.json({return:"success"});
 }
 
-exports.project_folder_create = function(req, res){
+exports.folder_create = function(req, res){
     const path =  req.app.locals.currentProjectPath + "\\" +
     req.params.folderpath + req.params[0];
 
     fs.mkdirSync(path);
+    res.json({return:"success"});
+
+}
+
+exports.save_file = function(req, res){
+    const filepath =  req.app.locals.currentProjectPath + "\\" +
+        req.params.filepath + req.params[0];
+
+    fs.writeFileSync(filepath, req.body.data);
+    console.log("File saved! at " + filepath);
 }
 
 exports.get_file = function(req, res){

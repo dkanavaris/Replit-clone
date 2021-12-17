@@ -40,7 +40,7 @@ async function get_file_data(filepath){
 
 window.onload = (event) => {
     get_project_data().then(response => 
-        {update_file_view(project_files, "", response.data.children, "block", 1);})
+        {update_file_view(project_files, "", response.data.children, "block", 0);})
 };
 
 function update_file_view(parent_div, parent_dir,  data, display, margin_left){
@@ -89,7 +89,8 @@ function update_file_view(parent_div, parent_dir,  data, display, margin_left){
             
 
             //Call update_file_view on the sub div and children data
-            update_file_view(sub_div, item.id + "\\", entry.children, "none", 10 + margin_left);
+            // Change margin left to 30 to add some spacing between parents and children
+            update_file_view(sub_div, item.id + "\\", entry.children, "none", 30);
 
             //Add an event listener for the folder
             contents.addEventListener("click", toggle_children);
@@ -104,12 +105,27 @@ function update_file_view(parent_div, parent_dir,  data, display, margin_left){
             contents.addEventListener("click", display_data);
         }
         
+        contents.addEventListener("mouseenter", on_hover);
+        contents.addEventListener("mouseleave", on_hover_exit);
         item.style.display = display;
         item.style.marginLeft = `${margin_left}px`;
         parent_div.appendChild(item);
     });
 }
 
+function on_hover(e){
+    e.stopPropagation();
+
+    e.target.style.backgroundColor = HOVER_COLOR;
+}
+
+function on_hover_exit(e){
+    e.stopPropagation();
+
+    /* If you were not last clicked the change bg color*/
+    if(last_visited != e.target)
+        e.target.style.backgroundColor = "transparent";
+}
 /* Event listener function use to toggle on and off the display of a directory contents */
 function toggle_children(e){
 
@@ -150,6 +166,8 @@ function toggle_children(e){
         else
             sub_div[j].style.display = "none";
     }
+    console.log(last_visited);
+
 }
 
 /* Fetch the data of the file and display them on the editor */
@@ -176,6 +194,7 @@ function display_data(e){
     contents.style.backgroundColor = HOVER_COLOR;
 
     let filepath = contents.id;
+    document.querySelector(".open-files").textContent = filepath;
 
     const text_editor = document.querySelector("#editor");
 
@@ -188,6 +207,17 @@ function display_data(e){
         
         myCodeMirror = CodeMirror.fromTextArea(text_editor,{
             lineNumbers: true,
+            extraKeys: {
+                "Ctrl-S": function(instance){ // On save make an request to the server
+                    axios({
+                        method: 'post',
+                        url: window.location.href + "/save_file/" + last_visited.id,
+                        data: {
+                            data : myCodeMirror.getValue()
+                        }
+                    });
+                }
+            }
         });
         
         let m, mode, spec;
@@ -208,6 +238,7 @@ function display_data(e){
         myCodeMirror.setSize(1000 , 800);
     });
 
+    console.log(last_visited);
 }
 
 /* =========================================================================== 
@@ -236,8 +267,7 @@ folder_add_button.addEventListener("click", add_folder);
 create_button.addEventListener("click", create_request);
 input_text.addEventListener("input", check_input);
 
-function show_input_error(text){
-    let error_msg = `${text} already exists`
+function show_input_error(error_msg){
     input_error_container.textContent = error_msg;
     input_error_container.style.display = "flex";
 
@@ -254,24 +284,26 @@ function check_input(e){
     let dir;
 
     if(last_visited.parentNode.id != ""){
-        dir = last_visited.parentNode.children[1].children;
+        //If a a directory was the last visited element then 
+        // get the children of the sub directory.
+        if(last_visited.className == "contents")
+            dir = last_visited.parentNode.children[1].children;
+        else // Else a file of a sub_dir was clicked so get the siblings
+            dir = last_visited.parentNode.children;
     }
     else{
-        dir = last_visited.children;
+        dir = project_files.children;
     }
 
     for(let i = 0; i < dir.length; i++){
         //Search for the file or folder name.
         let name;
-        let m = dir[i].id.match(/[\\\\](.*)/);
-        if(m)
-            name = m[1];
-        else
-            name = dir[i].id;
+        let index = dir[i].id.lastIndexOf("\\");
+        name = dir[i].id.substring(index + 1, dir[i].id.length);
         
-        console.log(name == text);
+
         if(name == text && type == dir[i].className){
-            show_input_error(text);
+            show_input_error(`${type}  : ${name} already exists`);
             return;
         }
         else{
@@ -280,28 +312,26 @@ function check_input(e){
     }
 }
 
-function create_request(){
+async function create_request(){
 
     let text = input_text.value;
-    let filepath, dir;
+    let filepath;
 
     if(last_visited.parentNode.id != ""){
         filepath = last_visited.parentNode.id + "\\" + text;
-        dir = last_visited.parentNode.children[1].children;
     }
     else{
         filepath = text;
-        dir = last_visited.children;
     }
 
-    if(type == "file"){
-        axios({
+    if(type == "file"){ 
+        await axios({
             method: 'post',
             url: window.location.href + "/file_create/" + filepath,
         });
     }
     else{
-        axios({
+        await axios({
             method: 'post',
             url: window.location.href + "/folder_create/" + filepath,
         });
@@ -310,6 +340,12 @@ function create_request(){
     input_text.value = "";
     file_input_visible = folder_input_visible = false;
     input_container.style.display = "none";
+
+    /* Since the request was completed update the file-view  */
+    /* Erase the data from file view */
+    project_files.innerHTML = "";
+    get_project_data().then(response => 
+        {update_file_view(project_files, "", response.data.children, "block", 1);});
 }
 
 function add_file(){
