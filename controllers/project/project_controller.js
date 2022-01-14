@@ -3,9 +3,17 @@ const fs = require("fs");
 const path = require('path');
 //TODO: add semaphores so multiple users cannot save,create,delete togethen
 
-exports.file_create = function(req, res){
+async function get_path(req){
+    const project_name = req.params.project_name
+    const username = req.params.username.replace("@", "");
+    const project_path = await Project.findOne({name: project_name, owner: username});
+    return project_path.path;
+}
+exports.file_create = async function(req, res){
 
-    const filepath =  req.app.locals.currentProjectPath + "\\" +
+    let path = await get_path(req);
+
+    const filepath =  path + "\\" +
                     req.params.filepath + req.params[0];
 
     fs.writeFileSync(filepath, "");
@@ -13,8 +21,11 @@ exports.file_create = function(req, res){
     res.json({return:"success"});
 }
 
-exports.folder_create = function(req, res){
-    const path =  req.app.locals.currentProjectPath + "\\" +
+exports.folder_create = async function(req, res){
+
+    let path = await get_path(req);
+
+    path = path + "\\" +
     req.params.folderpath + req.params[0];
 
     fs.mkdirSync(path);
@@ -22,18 +33,22 @@ exports.folder_create = function(req, res){
 
 }
 
-exports.save_file = function(req, res){
-    const filepath =  req.app.locals.currentProjectPath + "\\" +
+exports.save_file = async function(req, res){
+
+    let path = await get_path(req);
+
+    const filepath =  path + "\\" +
         req.params.filepath + req.params[0];
 
     fs.writeFileSync(filepath, req.body.data);
     console.log("File saved! at " + filepath);
 }
 
-exports.get_file = function(req, res){
+exports.get_file = async function(req, res){
 
+    let path = await get_path(req);
 
-    const filepath = req.app.locals.currentProjectPath + "\\" +
+    const filepath = path + "\\" +
                         req.params.path + req.params[0];
 
     let file_data = fs.readFileSync(filepath, 'utf-8');
@@ -41,8 +56,10 @@ exports.get_file = function(req, res){
     res.json({file_data: file_data});
 }
 
-exports.get_project_files = function(req, res){
-    res.json(dirTree(req.app.locals.currentProjectPath));
+exports.get_project_files = async function(req, res){
+
+    let path = await get_path(req);
+    res.json(dirTree(path));
 }
 
 exports.main_page_project = async function(req, res){
@@ -66,7 +83,7 @@ exports.main_page_project = async function(req, res){
 
     /* Else store the current project path to a local 
      * variable and redirect to project page. */
-    req.app.locals.currentProjectPath = project_path.path;
+    //req.app.locals.currentProjectPath = project_path.path;
 
     
 
