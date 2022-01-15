@@ -1,6 +1,13 @@
 /* =========================================================================== 
  * Code used for file view actions .
  *=========================================================================== */
+var sharedb = require('sharedb/lib/client');
+var otText = require('ot-text');
+var ShareDBCodeMirror = require('sharedb-codemirror');
+
+sharedb.types.map['json0'].registerSubtype(otText.type);
+let doc; 
+
 const project_files = document.querySelector(".file_view");
 CodeMirror.modeURL = "/codemirror/codemirror-5.64.0/mode/%N/%N.js"
 
@@ -198,12 +205,25 @@ function display_data(e){
 
     const text_editor = document.querySelector("#editor");
 
+    
+    /* Open a connection for this file */
+    let url = window.location.href.split("/");
+    let user = url[url.length - 2];
+    let file = filepath;
+
+
+
     get_file_data(filepath).then(response => {
+
+        var socket = new WebSocket("ws://" + location.host + `/${user}/${file}`);
+
+        var shareConnection = new sharedb.Connection(socket);
+        doc = shareConnection.get(user, file);
 
         if(myCodeMirror != null)
             myCodeMirror.toTextArea();
 
-        text_editor.value =  response.data.file_data;
+        text_editor.value =  "";
         
         myCodeMirror = CodeMirror.fromTextArea(text_editor,{
             lineNumbers: true,
@@ -235,6 +255,23 @@ function display_data(e){
             CodeMirror.autoLoadMode(myCodeMirror, mode);
         }
         
+        // Fetch the doc's data
+        doc.fetch();
+
+        ShareDBCodeMirror.attachDocToCodeMirror(doc, myCodeMirror, {
+            key: 'content',
+            verbose: true,
+        }, function(){
+            let data = response.data.file_data;
+
+            // If this is not the first doc created
+            // then display the data of the doc that is on the server
+            if(doc.version > 1)
+                data = doc.data.content;
+
+            myCodeMirror.setValue(data);
+        });
+
         myCodeMirror.setSize(1000 , 800);
     });
 

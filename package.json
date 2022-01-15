@@ -20,7 +20,11 @@
 		"mongoose": "^6.0.12",
 		"morgan": "~1.9.1",
 		"nodemon": "^2.0.14",
+		"ot-text": "^1.0.2",
 		"passport": "^0.5.0",
-		"passport-local": "^1.0.0"
+		"passport-local": "^1.0.0",
+		"sharedb-codemirror": "^0.3.0",
+		"websocket-json-stream": "^0.0.3",
+		"ws": "^8.4.2"
 	}
 }

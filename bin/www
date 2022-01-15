@@ -8,6 +8,14 @@ let app = require('../app');
 let debug = require('debug')('replit-clone:server');
 let http = require('http');
 
+var ShareDB = require('sharedb');
+var WebSocketServer = require('ws').Server;
+var otText = require('ot-text');
+var WebSocketJSONStream = require('websocket-json-stream');
+
+ShareDB.types.map['json0'].registerSubtype(otText.type);
+var shareDB = new ShareDB();
+
 /**
  * Get port from environment and store in Express.
  */
@@ -88,3 +96,10 @@ function onListening() {
       : 'port ' + addr.port;
     debug('Listening on ' + bind);
 }
+
+var webSocketServer = new WebSocketServer({server: server});
+
+webSocketServer.on('connection', function (socket) {
+  var stream = new WebSocketJSONStream(socket);
+  shareDB.listen(stream);
+});
