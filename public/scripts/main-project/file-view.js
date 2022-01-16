@@ -1,9 +1,19 @@
 /* =========================================================================== 
  * Code used for file view actions .
  *=========================================================================== */
+//TODO: update the fileview in intervals so that if multiple users create files
+// the changes will be visible to everyone.
+
 var sharedb = require('sharedb/lib/client');
 var otText = require('ot-text');
 var ShareDBCodeMirror = require('sharedb-codemirror');
+
+// FIXME: Overrided this function it was causing errors that didn't make sense
+// i.e expectedValue did match the editor Value. See the initial implementantion
+// at bundle.js
+ShareDBCodeMirror.prototype.assertValue = function(expectedValue) {
+    return false;
+}
 
 sharedb.types.map['json0'].registerSubtype(otText.type);
 let doc; 
@@ -210,21 +220,28 @@ function display_data(e){
     let url = window.location.href.split("/");
     let user = url[url.length - 2];
     let file = filepath;
+    
+    
 
 
 
     get_file_data(filepath).then(response => {
 
+        // Unsubscribe from the previous doc to stop listening for changes
+        if(doc)
+            doc.unsubscribe();
+
         var socket = new WebSocket("ws://" + location.host + `/${user}/${file}`);
 
         var shareConnection = new sharedb.Connection(socket);
+
         doc = shareConnection.get(user, file);
 
         if(myCodeMirror != null)
             myCodeMirror.toTextArea();
-
-        text_editor.value =  "";
         
+        text_editor.value = "";
+
         myCodeMirror = CodeMirror.fromTextArea(text_editor,{
             lineNumbers: true,
             extraKeys: {
@@ -255,8 +272,6 @@ function display_data(e){
             CodeMirror.autoLoadMode(myCodeMirror, mode);
         }
         
-        // Fetch the doc's data
-        doc.fetch();
 
         ShareDBCodeMirror.attachDocToCodeMirror(doc, myCodeMirror, {
             key: 'content',
@@ -274,8 +289,6 @@ function display_data(e){
 
         myCodeMirror.setSize(1000 , 800);
     });
-
-    console.log(last_visited);
 }
 
 /* =========================================================================== 

@@ -11517,9 +11517,16 @@ exports.nextTick = function(callback) {
 /* =========================================================================== 
  * Code used for file view actions .
  *=========================================================================== */
+//TODO: update the fileview in intervals so that if multiple users create files
+// the changes will be visible to everyone.
+
 var sharedb = require('sharedb/lib/client');
 var otText = require('ot-text');
 var ShareDBCodeMirror = require('sharedb-codemirror');
+/*
+ShareDBCodeMirror.prototype.assertValue = function(expectedValue) {
+    return false;
+}*/
 
 sharedb.types.map['json0'].registerSubtype(otText.type);
 let doc; 
@@ -11726,21 +11733,28 @@ function display_data(e){
     let url = window.location.href.split("/");
     let user = url[url.length - 2];
     let file = filepath;
+    
+    
 
 
 
     get_file_data(filepath).then(response => {
 
+        // Unsubscribe from the previous doc to stop listening for changes
+        if(doc)
+            doc.unsubscribe();
+
         var socket = new WebSocket("ws://" + location.host + `/${user}/${file}`);
 
         var shareConnection = new sharedb.Connection(socket);
+
         doc = shareConnection.get(user, file);
 
         if(myCodeMirror != null)
             myCodeMirror.toTextArea();
-
-        text_editor.value =  "";
         
+        text_editor.value = "";
+
         myCodeMirror = CodeMirror.fromTextArea(text_editor,{
             lineNumbers: true,
             extraKeys: {
@@ -11771,16 +11785,15 @@ function display_data(e){
             CodeMirror.autoLoadMode(myCodeMirror, mode);
         }
         
-        doc.fetch();
 
-        //TODO: display correct data when a new user opens the editor
         ShareDBCodeMirror.attachDocToCodeMirror(doc, myCodeMirror, {
             key: 'content',
             verbose: true,
         }, function(){
             let data = response.data.file_data;
 
-            console.log(doc.version);
+            // If this is not the first doc created
+            // then display the data of the doc that is on the server
             if(doc.version > 1)
                 data = doc.data.content;
 
@@ -11789,8 +11802,6 @@ function display_data(e){
 
         myCodeMirror.setSize(1000 , 800);
     });
-
-    console.log(last_visited);
 }
 
 /* =========================================================================== 
