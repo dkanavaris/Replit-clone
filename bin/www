@@ -9,12 +9,23 @@ let debug = require('debug')('replit-clone:server');
 let http = require('http');
 
 var ShareDB = require('sharedb');
-var WebSocketServer = require('ws').Server;
+var WebSocket = require('ws');
+var WebSocketJSONStream = require('@teamwork/websocket-json-stream');
 var otText = require('ot-text');
-var WebSocketJSONStream = require('websocket-json-stream');
-
 ShareDB.types.map['json0'].registerSubtype(otText.type);
-var shareDB = new ShareDB();
+
+
+var backend = new ShareDB();
+
+function startServer() {
+
+  // Connect any incoming WebSocket connection to ShareDB
+  var wss = new WebSocket.Server({server: server});
+  wss.on('connection', function(ws) {
+    var stream = new WebSocketJSONStream(ws);
+    backend.listen(stream);
+  });
+}
 
 /**
  * Get port from environment and store in Express.
@@ -97,9 +108,4 @@ function onListening() {
     debug('Listening on ' + bind);
 }
 
-var webSocketServer = new WebSocketServer({server: server});
-
-webSocketServer.on('connection', function (socket) {
-  var stream = new WebSocketJSONStream(socket);
-  shareDB.listen(stream);
-});
+startServer();

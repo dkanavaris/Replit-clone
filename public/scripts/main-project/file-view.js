@@ -4,19 +4,16 @@
 //TODO: update the fileview in intervals so that if multiple users create files
 // the changes will be visible to everyone.
 
-var sharedb = require('sharedb/lib/client');
-var otText = require('ot-text');
-var ShareDBCodeMirror = require('sharedb-codemirror');
 
-// FIXME: Overrided this function it was causing errors that didn't make sense
-// i.e expectedValue did match the editor Value. See the initial implementantion
-// at bundle.js
-ShareDBCodeMirror.prototype.assertValue = function(expectedValue) {
-    return false;
-}
+
+let sharedb = require('sharedb/lib/client');
+// Open WebSocket connection to ShareDB server
+let ReconnectingWebSocket = require('reconnecting-websocket');
+let otText = require('ot-text');
+
+let doc; // Doc must be global.
 
 sharedb.types.map['json0'].registerSubtype(otText.type);
-let doc; 
 
 const project_files = document.querySelector(".file_view");
 CodeMirror.modeURL = "/codemirror/codemirror-5.64.0/mode/%N/%N.js"
@@ -221,29 +218,34 @@ function display_data(e){
     let user = url[url.length - 2];
     let file = filepath;
     
-    
-
-
-
     get_file_data(filepath).then(response => {
 
+        let text_editor = document.querySelector("#editor");
+        let url = window.location.href.split("/");
+        let user = url[url.length - 2];
+        let file = filepath;
+
         // Unsubscribe from the previous doc to stop listening for changes
-        if(doc)
+        if(typeof doc !== 'undefined'){
             doc.unsubscribe();
+        }
 
-        var socket = new WebSocket("ws://" + location.host + `/${user}/${file}`);
-
-        var shareConnection = new sharedb.Connection(socket);
-
-        doc = shareConnection.get(user, file);
+        // Open a new connection
+        let socket = new ReconnectingWebSocket("ws://" + location.host + `/${user}/${file}`);
+        let connection = new sharedb.Connection(socket);
+        doc = connection.get(user, file);
+        
 
         if(myCodeMirror != null)
             myCodeMirror.toTextArea();
         
-        text_editor.value = "";
 
+        // Initialize code-mirror
+        text_editor.value = response.data.file_data;
         myCodeMirror = CodeMirror.fromTextArea(text_editor,{
             lineNumbers: true,
+            autoRefresh:true,
+            inputStyle: "textarea",
             extraKeys: {
                 "Ctrl-S": function(instance){ // On save make an request to the server
                     axios({
@@ -271,25 +273,95 @@ function display_data(e){
             myCodeMirror.setOption("mode", spec);
             CodeMirror.autoLoadMode(myCodeMirror, mode);
         }
-        
 
-        ShareDBCodeMirror.attachDocToCodeMirror(doc, myCodeMirror, {
-            key: 'content',
-            verbose: true,
-        }, function(){
-            let data = response.data.file_data;
+        // Fetch the doc's data
+        doc.fetch(function(e){
+            // First time we fetch this doc from the server
+            if(doc.version == 0){
+                doc.create({content: response.data.file_data});
+            }
+            // Subscribe to the doc to start listening for changes
+            doc.subscribe(function(err) {
+                if (err) throw err;
+                let data = doc.data.content.data ? doc.data.content.data : doc.data.content;
+                myCodeMirror.setValue(data);
+            });
 
-            // If this is not the first doc created
-            // then display the data of the doc that is on the server
-            if(doc.version > 1)
-                data = doc.data.content;
-
-            myCodeMirror.setValue(data);
         });
 
+        let cursor;
+        /* On code-mirror change(something was typed) fetch the doc from the server.
+         * If the doc's data doesn't match the current data then submit the changes to the
+         * doc else return.
+        */
+       // Use the change object here
+        myCodeMirror.on("change", (mirror, change_obj)=>{
+            doc.fetch(() => {
+                
+                if(doc.data){
+                    if(doc.data.content === myCodeMirror.getValue()){
+                        return;
+                    }
+                    else{
+                        // Pass the editor change to the doc
+                        let content = {
+                            data : myCodeMirror.getValue(),
+                            change : change_obj,
+                            user : document.querySelector(".username").textContent.trim()
+                        }
+                        doc.submitOp([{p: ['content'], oi: content}]);
+                    }
+                }
+            })
+        });
+
+        /* When an operation is called on the doc update the 
+         * code-mirror data. This is done because multiple user's can share
+         * a doc and listen for the changes so code-mirror must be updated.
+         * This alsos causes a recursion loop with the above listener if not handled
+         * correctly and that's why we compare the code-mirror data with the doc data
+         * before submiting the operation.
+         */
+        doc.on("op", ()=>{
+            doc.fetch(()=>{
+                let change = doc.data.content.change;
+                let username = doc.data.content.user;
+                
+                /* Ignore changes by the current user or changes that occured when opening the editor */
+                if(username === document.querySelector(".username").textContent.trim() || change.origin === "setValue")
+                    return;
+
+                console.log(doc.data.content);
+
+                // Change was a single input
+                if(change.origin == "+input"){
+
+                    /* TODO: Fix the cursor when two user's work together on the same document
+                    /* FIXME: Case 1 If user a edits above user b and presses enter X times then the cursor of
+                    /* user b must go down X lines. 
+                    /* FIXME: Case 2 If user a and user b work on the same line of the document then if user a
+                    /* adds something before the cursor of user b then user b cursor must advance by one character.
+                     */
+                    cursor = myCodeMirror.getDoc().getCursor();
+                    myCodeMirror.replaceRange(change.text, change.from, change.to);
+                    myCodeMirror.focus();
+                    myCodeMirror.getDoc().setCursor(cursor);
+                }
+
+                // TODO: user doc.replaceRange insted of setValue
+                //cursor = myCodeMirror.getDoc().getCursor();
+                //myCodeMirror.setValue(doc.data.content)
+                //myCodeMirror.focus();
+                //myCodeMirror.getDoc().setCursor(cursor);
+            })
+        })
+
         myCodeMirror.setSize(1000 , 800);
+
     });
 }
+
+
 
 /* =========================================================================== 
  * Code used for file or folder creation.

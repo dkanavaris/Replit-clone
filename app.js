@@ -27,7 +27,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 /* Use passport for authentication */
-app.use(session({ secret: "cats", resave: false, saveUninitialized: false }));
+app.use(session({ secret: "cats", resave: false, saveUninitialized: false, cookie: {name : "test"}}));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));

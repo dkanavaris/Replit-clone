@@ -19,7 +19,9 @@
 			</div>
 
 			<div class = "right">
-                <%= currentUser.username%>
+				<div class = "username">
+                	<%= currentUser.username%>
+				</div>
 				<div class = "profile-image"></div>
 			</div>
 		</div>
@@ -55,7 +57,8 @@
 				<div class = "open-files">
 					<button>current file</button>
 				</div>
-				<textarea id="editor" style = "display: none"></textarea>
+				<textarea id="editor" style = "display: flex"></textarea>
+
 			</div>
 		</div>
 	</body>
@@ -67,5 +70,6 @@
 	<link rel="stylesheet" href="/codemirror/codemirror-5.64.0/lib/codemirror.css">
 	<script src="/codemirror/codemirror-5.64.0/mode/meta.js"></script>
 	<script src="/codemirror/codemirror-5.64.0/addon/mode/loadmode.js"></script>
+	<script src="/codemirror/codemirror-5.64.0/addon/display/autorefresh.js"></script>
 
 </html>

@@ -7989,309 +7989,595 @@ exports.selectionEq = function(c1, c2) {
 
 
 },{}],14:[function(require,module,exports){
-/**
- * @constructor
- * @param {CodeMirror} codeMirror - a CodeMirror editor instance
- * @param {Object} options - required. Options object with the following keys:
- *    - onOp(op): required. a function to call when a text OT op is
- *      produced by the editor. Typically will call `submitOp` on the ShareDB
- *      doc. When doing so, note that it's important to pass `{source: this}`
- *      as the second argument to `submitOp` so that `ShareDBCodeMirror` can
- *      identify its own ops when rebroadcasted.
- *    - onStart(): optional. will be called when ShareDBCodeMirror starts listening
- *      (i.e., when `.start()` or `.setValue()` is called)
- *    - onStop(): optional. will be called when ShareDBCodeMirror stops listening
- *      (i.e., when `.stop()` is called)
- *    - verbose: optional. If provided and true, debug messages will be printed
- *      to the console.
- */
-function ShareDBCodeMirror(codeMirror, options) {
-  this.codeMirror = codeMirror;
-  this.verbose = Boolean(options.verbose);
-  this.onOp = options.onOp;
-  this.onStart = options.onStart || function() {};
-  this.onStop = options.onStop || function() {};
+'use strict';
 
-  this._started = false;
-  this._suppressChange = false;
-  this._changeListener = this._handleChange.bind(this);
+/*! *****************************************************************************
+Copyright (c) Microsoft Corporation. All rights reserved.
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at http://www.apache.org/licenses/LICENSE-2.0
+
+THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+MERCHANTABLITY OR NON-INFRINGEMENT.
+
+See the Apache Version 2.0 License for specific language governing permissions
+and limitations under the License.
+***************************************************************************** */
+/* global Reflect, Promise */
+
+var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return extendStatics(d, b);
+};
+
+function __extends(d, b) {
+    extendStatics(d, b);
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 }
-module.exports = ShareDBCodeMirror;
 
-/**
- * Attaches a ShareDB doc to a CodeMirror instance. You can also construct a
- * ShareDBCodeMirror instance directly if you'd like to wire things up
- * explicitly and have an abstraction layer between the two.
- *
- * @param {sharedb.Doc} shareDoc
- * @param {CodeMirror} codeMirror
- * @param {Object} options - configuration options:
- *    - key: string; required. The key in the ShareDB doc at which to
- *      store the CodeMirror value. Deeply nested paths are currently not
- *      supported.
- *    - verbose: optional. If provided and true, debug messages will be printed
- *      to the console.
- * @param {function(Object)=} callback - optional. will be called when everything
- *    is hooked up. The first argument will be the error that occurred, if any.
- * @return {ShareDBCodeMirror} the created ShareDBCodeMirror object
+function __values(o) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
+    if (m) return m.call(o);
+    return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+}
+
+function __read(o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+}
+
+function __spread() {
+    for (var ar = [], i = 0; i < arguments.length; i++)
+        ar = ar.concat(__read(arguments[i]));
+    return ar;
+}
+
+var Event = /** @class */ (function () {
+    function Event(type, target) {
+        this.target = target;
+        this.type = type;
+    }
+    return Event;
+}());
+var ErrorEvent = /** @class */ (function (_super) {
+    __extends(ErrorEvent, _super);
+    function ErrorEvent(error, target) {
+        var _this = _super.call(this, 'error', target) || this;
+        _this.message = error.message;
+        _this.error = error;
+        return _this;
+    }
+    return ErrorEvent;
+}(Event));
+var CloseEvent = /** @class */ (function (_super) {
+    __extends(CloseEvent, _super);
+    function CloseEvent(code, reason, target) {
+        if (code === void 0) { code = 1000; }
+        if (reason === void 0) { reason = ''; }
+        var _this = _super.call(this, 'close', target) || this;
+        _this.wasClean = true;
+        _this.code = code;
+        _this.reason = reason;
+        return _this;
+    }
+    return CloseEvent;
+}(Event));
+
+/*!
+ * Reconnecting WebSocket
+ * by Pedro Ladaria <pedro.ladaria@gmail.com>
+ * https://github.com/pladaria/reconnecting-websocket
+ * License MIT
  */
-ShareDBCodeMirror.attachDocToCodeMirror = function(shareDoc, codeMirror, options, callback) {
-  var key = options.key;
-  var verbose = Boolean(options.verbose);
-
-  var shareDBCodeMirror = new ShareDBCodeMirror(codeMirror, {
-    verbose: verbose,
-    onStart: function() {
-      shareDoc.on('op', shareDBOpListener);
-    },
-    onStop: function() {
-      shareDoc.removeListener('op', shareDBOpListener);
-    },
-    onOp: function(op) {
-      var docOp = [{p: [key], t: 'text', o: op}];
-
-      if (verbose) {
-        console.log('ShareDBCodeMirror: submitting op to doc:', docOp);
-      }
-
-      shareDoc.submitOp(docOp, {source: this});
-      shareDBCodeMirror.assertValue(shareDoc.data[key]);
+var getGlobalWebSocket = function () {
+    if (typeof WebSocket !== 'undefined') {
+        // @ts-ignore
+        return WebSocket;
     }
-  });
-
-  function shareDBOpListener(op, source) {
-    for (var i = 0; i < op.length; i++) {
-      var opPart = op[i];
-
-      if (opPart.p && opPart.p.length === 1 && opPart.p[0] === key && opPart.t === 'text') {
-        shareDBCodeMirror.applyOp(opPart.o, source === undefined ? null : source);
-
-      } else if (verbose) {
-        console.log('ShareDBCodeMirror: ignoring op because of path or type:', opPart);
-      }
-    }
-
-    shareDBCodeMirror.assertValue(shareDoc.data[key]);
-  }
-
-  shareDoc.subscribe(function(err) {
-    if (err) {
-      if (callback) {
-        callback(err);
-        return;
-      } else {
-        throw err;
-      }
-    }
-
-    if (!shareDoc.type) {
-      if (verbose) {
-        console.log('ShareDBCodeMirror: creating as text');
-      }
-      var newDoc = {};
-      newDoc[key] = '';
-      shareDoc.create(newDoc);
-    }
-
-    if (verbose) {
-      console.log('ShareDBCodeMirror: Subscribed to doc');
-    }
-
-    shareDBCodeMirror.setValue(shareDoc.data[key] || '');
-
-    if (callback) {
-      callback(null);
-    }
-  });
-
-  return shareDBCodeMirror;
 };
-
 /**
- * Starts listening for changes from the CodeMirror instance. Calling `setValue`
- * will also call this, if necessary.
+ * Returns true if given argument looks like a WebSocket class
  */
-ShareDBCodeMirror.prototype.start = function() {
-  if (this._started) {
-    return;
-  }
-  this.codeMirror.on('change', this._changeListener);
-  this._started = true;
-  this.onStart();
+var isWebSocket = function (w) { return typeof w !== 'undefined' && !!w && w.CLOSING === 2; };
+var DEFAULT = {
+    maxReconnectionDelay: 10000,
+    minReconnectionDelay: 1000 + Math.random() * 4000,
+    minUptime: 5000,
+    reconnectionDelayGrowFactor: 1.3,
+    connectionTimeout: 4000,
+    maxRetries: Infinity,
+    maxEnqueuedMessages: Infinity,
+    startClosed: false,
+    debug: false,
 };
-
-/**
- * Replaces the contents of the CodeMirror instance with the supplied text and
- * starts listening for changes.
- */
-ShareDBCodeMirror.prototype.setValue = function(text) {
-  if (!this._started) {
-    this.start();
-  }
-  this._suppressChange = true;
-  this.codeMirror.setValue(text);
-  this._suppressChange = false;
-};
-
-/**
- * Convenience - returns the text in the CodeMirror instance.
- */
-ShareDBCodeMirror.prototype.getValue = function() {
-  return this.codeMirror.getValue();
-};
-
-/**
- * Asserts that the value in the CodeMirror instance matches the passed-in value.
- * If it does not, an error is logged and the value in CodeMirror is reset. This
- * should be called periodically with the value from the ShareDB doc to ensure
- * the value in CodeMirror hasn't diverged.
- *
- * @return {boolean} true if the passed-in value matches the value in the
- *    CodeMirror instance, false otherwise.
- */
-ShareDBCodeMirror.prototype.assertValue = function(expectedValue) {
-  var editorValue = this.codeMirror.getValue();
-
-  if (expectedValue !== editorValue) {
-    console.error(
-      "Value in CodeMirror doesn't match expected value:\n\n",
-      "Expected Value:\n", expectedValue,
-      "\n\nEditor Value:\n", editorValue);
-
-    this._suppressChange = true;
-    this.codeMirror.setValue(expectedValue);
-    this._suppressChange = false;
-
-    return false;
-  }
-
-  return true;
-};
-
-/**
- * Applies the changes represented by the given text OT op. The op may be
- * ignored if it appears to be an echo of the most recently submitted local op.
- * In order to do this properly, the second argument, `source`, **must** be passed
- * in. This will be the second argument to an "op" listener on a ShareDB doc.
- */
-ShareDBCodeMirror.prototype.applyOp = function(op, source) {
-  if (source === undefined) {
-    throw new Error("The 'source' argument must be provided");
-  }
-
-  if (!Array.isArray(op)) {
-    throw new Error("Unexpected non-Array op for text document");
-  }
-
-  if (!this._started) {
-    if (this.verbose) {
-      console.log('ShareDBCodeMirror: op received while not running, ignored', op);
+var ReconnectingWebSocket = /** @class */ (function () {
+    function ReconnectingWebSocket(url, protocols, options) {
+        var _this = this;
+        if (options === void 0) { options = {}; }
+        this._listeners = {
+            error: [],
+            message: [],
+            open: [],
+            close: [],
+        };
+        this._retryCount = -1;
+        this._shouldReconnect = true;
+        this._connectLock = false;
+        this._binaryType = 'blob';
+        this._closeCalled = false;
+        this._messageQueue = [];
+        /**
+         * An event listener to be called when the WebSocket connection's readyState changes to CLOSED
+         */
+        this.onclose = null;
+        /**
+         * An event listener to be called when an error occurs
+         */
+        this.onerror = null;
+        /**
+         * An event listener to be called when a message is received from the server
+         */
+        this.onmessage = null;
+        /**
+         * An event listener to be called when the WebSocket connection's readyState changes to OPEN;
+         * this indicates that the connection is ready to send and receive data
+         */
+        this.onopen = null;
+        this._handleOpen = function (event) {
+            _this._debug('open event');
+            var _a = _this._options.minUptime, minUptime = _a === void 0 ? DEFAULT.minUptime : _a;
+            clearTimeout(_this._connectTimeout);
+            _this._uptimeTimeout = setTimeout(function () { return _this._acceptOpen(); }, minUptime);
+            _this._ws.binaryType = _this._binaryType;
+            // send enqueued messages (messages sent before websocket open event)
+            _this._messageQueue.forEach(function (message) { return _this._ws.send(message); });
+            _this._messageQueue = [];
+            if (_this.onopen) {
+                _this.onopen(event);
+            }
+            _this._listeners.open.forEach(function (listener) { return _this._callEventListener(event, listener); });
+        };
+        this._handleMessage = function (event) {
+            _this._debug('message event');
+            if (_this.onmessage) {
+                _this.onmessage(event);
+            }
+            _this._listeners.message.forEach(function (listener) { return _this._callEventListener(event, listener); });
+        };
+        this._handleError = function (event) {
+            _this._debug('error event', event.message);
+            _this._disconnect(undefined, event.message === 'TIMEOUT' ? 'timeout' : undefined);
+            if (_this.onerror) {
+                _this.onerror(event);
+            }
+            _this._debug('exec error listeners');
+            _this._listeners.error.forEach(function (listener) { return _this._callEventListener(event, listener); });
+            _this._connect();
+        };
+        this._handleClose = function (event) {
+            _this._debug('close event');
+            _this._clearTimeouts();
+            if (_this._shouldReconnect) {
+                _this._connect();
+            }
+            if (_this.onclose) {
+                _this.onclose(event);
+            }
+            _this._listeners.close.forEach(function (listener) { return _this._callEventListener(event, listener); });
+        };
+        this._url = url;
+        this._protocols = protocols;
+        this._options = options;
+        if (this._options.startClosed) {
+            this._shouldReconnect = false;
+        }
+        this._connect();
     }
-    return;
-  }
+    Object.defineProperty(ReconnectingWebSocket, "CONNECTING", {
+        get: function () {
+            return 0;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket, "OPEN", {
+        get: function () {
+            return 1;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket, "CLOSING", {
+        get: function () {
+            return 2;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket, "CLOSED", {
+        get: function () {
+            return 3;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "CONNECTING", {
+        get: function () {
+            return ReconnectingWebSocket.CONNECTING;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "OPEN", {
+        get: function () {
+            return ReconnectingWebSocket.OPEN;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "CLOSING", {
+        get: function () {
+            return ReconnectingWebSocket.CLOSING;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "CLOSED", {
+        get: function () {
+            return ReconnectingWebSocket.CLOSED;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "binaryType", {
+        get: function () {
+            return this._ws ? this._ws.binaryType : this._binaryType;
+        },
+        set: function (value) {
+            this._binaryType = value;
+            if (this._ws) {
+                this._ws.binaryType = value;
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "retryCount", {
+        /**
+         * Returns the number or connection retries
+         */
+        get: function () {
+            return Math.max(this._retryCount, 0);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "bufferedAmount", {
+        /**
+         * The number of bytes of data that have been queued using calls to send() but not yet
+         * transmitted to the network. This value resets to zero once all queued data has been sent.
+         * This value does not reset to zero when the connection is closed; if you keep calling send(),
+         * this will continue to climb. Read only
+         */
+        get: function () {
+            var bytes = this._messageQueue.reduce(function (acc, message) {
+                if (typeof message === 'string') {
+                    acc += message.length; // not byte size
+                }
+                else if (message instanceof Blob) {
+                    acc += message.size;
+                }
+                else {
+                    acc += message.byteLength;
+                }
+                return acc;
+            }, 0);
+            return bytes + (this._ws ? this._ws.bufferedAmount : 0);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "extensions", {
+        /**
+         * The extensions selected by the server. This is currently only the empty string or a list of
+         * extensions as negotiated by the connection
+         */
+        get: function () {
+            return this._ws ? this._ws.extensions : '';
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "protocol", {
+        /**
+         * A string indicating the name of the sub-protocol the server selected;
+         * this will be one of the strings specified in the protocols parameter when creating the
+         * WebSocket object
+         */
+        get: function () {
+            return this._ws ? this._ws.protocol : '';
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "readyState", {
+        /**
+         * The current state of the connection; this is one of the Ready state constants
+         */
+        get: function () {
+            if (this._ws) {
+                return this._ws.readyState;
+            }
+            return this._options.startClosed
+                ? ReconnectingWebSocket.CLOSED
+                : ReconnectingWebSocket.CONNECTING;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ReconnectingWebSocket.prototype, "url", {
+        /**
+         * The URL as resolved by the constructor
+         */
+        get: function () {
+            return this._ws ? this._ws.url : '';
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * Closes the WebSocket connection or connection attempt, if any. If the connection is already
+     * CLOSED, this method does nothing
+     */
+    ReconnectingWebSocket.prototype.close = function (code, reason) {
+        if (code === void 0) { code = 1000; }
+        this._closeCalled = true;
+        this._shouldReconnect = false;
+        this._clearTimeouts();
+        if (!this._ws) {
+            this._debug('close enqueued: no ws instance');
+            return;
+        }
+        if (this._ws.readyState === this.CLOSED) {
+            this._debug('close: already closed');
+            return;
+        }
+        this._ws.close(code, reason);
+    };
+    /**
+     * Closes the WebSocket connection or connection attempt and connects again.
+     * Resets retry counter;
+     */
+    ReconnectingWebSocket.prototype.reconnect = function (code, reason) {
+        this._shouldReconnect = true;
+        this._closeCalled = false;
+        this._retryCount = -1;
+        if (!this._ws || this._ws.readyState === this.CLOSED) {
+            this._connect();
+        }
+        else {
+            this._disconnect(code, reason);
+            this._connect();
+        }
+    };
+    /**
+     * Enqueue specified data to be transmitted to the server over the WebSocket connection
+     */
+    ReconnectingWebSocket.prototype.send = function (data) {
+        if (this._ws && this._ws.readyState === this.OPEN) {
+            this._debug('send', data);
+            this._ws.send(data);
+        }
+        else {
+            var _a = this._options.maxEnqueuedMessages, maxEnqueuedMessages = _a === void 0 ? DEFAULT.maxEnqueuedMessages : _a;
+            if (this._messageQueue.length < maxEnqueuedMessages) {
+                this._debug('enqueue', data);
+                this._messageQueue.push(data);
+            }
+        }
+    };
+    /**
+     * Register an event handler of a specific event type
+     */
+    ReconnectingWebSocket.prototype.addEventListener = function (type, listener) {
+        if (this._listeners[type]) {
+            // @ts-ignore
+            this._listeners[type].push(listener);
+        }
+    };
+    ReconnectingWebSocket.prototype.dispatchEvent = function (event) {
+        var e_1, _a;
+        var listeners = this._listeners[event.type];
+        if (listeners) {
+            try {
+                for (var listeners_1 = __values(listeners), listeners_1_1 = listeners_1.next(); !listeners_1_1.done; listeners_1_1 = listeners_1.next()) {
+                    var listener = listeners_1_1.value;
+                    this._callEventListener(event, listener);
+                }
+            }
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (listeners_1_1 && !listeners_1_1.done && (_a = listeners_1.return)) _a.call(listeners_1);
+                }
+                finally { if (e_1) throw e_1.error; }
+            }
+        }
+        return true;
+    };
+    /**
+     * Removes an event listener
+     */
+    ReconnectingWebSocket.prototype.removeEventListener = function (type, listener) {
+        if (this._listeners[type]) {
+            // @ts-ignore
+            this._listeners[type] = this._listeners[type].filter(function (l) { return l !== listener; });
+        }
+    };
+    ReconnectingWebSocket.prototype._debug = function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        if (this._options.debug) {
+            // not using spread because compiled version uses Symbols
+            // tslint:disable-next-line
+            console.log.apply(console, __spread(['RWS>'], args));
+        }
+    };
+    ReconnectingWebSocket.prototype._getNextDelay = function () {
+        var _a = this._options, _b = _a.reconnectionDelayGrowFactor, reconnectionDelayGrowFactor = _b === void 0 ? DEFAULT.reconnectionDelayGrowFactor : _b, _c = _a.minReconnectionDelay, minReconnectionDelay = _c === void 0 ? DEFAULT.minReconnectionDelay : _c, _d = _a.maxReconnectionDelay, maxReconnectionDelay = _d === void 0 ? DEFAULT.maxReconnectionDelay : _d;
+        var delay = 0;
+        if (this._retryCount > 0) {
+            delay =
+                minReconnectionDelay * Math.pow(reconnectionDelayGrowFactor, this._retryCount - 1);
+            if (delay > maxReconnectionDelay) {
+                delay = maxReconnectionDelay;
+            }
+        }
+        this._debug('next delay', delay);
+        return delay;
+    };
+    ReconnectingWebSocket.prototype._wait = function () {
+        var _this = this;
+        return new Promise(function (resolve) {
+            setTimeout(resolve, _this._getNextDelay());
+        });
+    };
+    ReconnectingWebSocket.prototype._getNextUrl = function (urlProvider) {
+        if (typeof urlProvider === 'string') {
+            return Promise.resolve(urlProvider);
+        }
+        if (typeof urlProvider === 'function') {
+            var url = urlProvider();
+            if (typeof url === 'string') {
+                return Promise.resolve(url);
+            }
+            if (!!url.then) {
+                return url;
+            }
+        }
+        throw Error('Invalid URL');
+    };
+    ReconnectingWebSocket.prototype._connect = function () {
+        var _this = this;
+        if (this._connectLock || !this._shouldReconnect) {
+            return;
+        }
+        this._connectLock = true;
+        var _a = this._options, _b = _a.maxRetries, maxRetries = _b === void 0 ? DEFAULT.maxRetries : _b, _c = _a.connectionTimeout, connectionTimeout = _c === void 0 ? DEFAULT.connectionTimeout : _c, _d = _a.WebSocket, WebSocket = _d === void 0 ? getGlobalWebSocket() : _d;
+        if (this._retryCount >= maxRetries) {
+            this._debug('max retries reached', this._retryCount, '>=', maxRetries);
+            return;
+        }
+        this._retryCount++;
+        this._debug('connect', this._retryCount);
+        this._removeListeners();
+        if (!isWebSocket(WebSocket)) {
+            throw Error('No valid WebSocket class provided');
+        }
+        this._wait()
+            .then(function () { return _this._getNextUrl(_this._url); })
+            .then(function (url) {
+            // close could be called before creating the ws
+            if (_this._closeCalled) {
+                return;
+            }
+            _this._debug('connect', { url: url, protocols: _this._protocols });
+            _this._ws = _this._protocols
+                ? new WebSocket(url, _this._protocols)
+                : new WebSocket(url);
+            _this._ws.binaryType = _this._binaryType;
+            _this._connectLock = false;
+            _this._addListeners();
+            _this._connectTimeout = setTimeout(function () { return _this._handleTimeout(); }, connectionTimeout);
+        });
+    };
+    ReconnectingWebSocket.prototype._handleTimeout = function () {
+        this._debug('timeout event');
+        this._handleError(new ErrorEvent(Error('TIMEOUT'), this));
+    };
+    ReconnectingWebSocket.prototype._disconnect = function (code, reason) {
+        if (code === void 0) { code = 1000; }
+        this._clearTimeouts();
+        if (!this._ws) {
+            return;
+        }
+        this._removeListeners();
+        try {
+            this._ws.close(code, reason);
+            this._handleClose(new CloseEvent(code, reason, this));
+        }
+        catch (error) {
+            // ignore
+        }
+    };
+    ReconnectingWebSocket.prototype._acceptOpen = function () {
+        this._debug('accept open');
+        this._retryCount = 0;
+    };
+    ReconnectingWebSocket.prototype._callEventListener = function (event, listener) {
+        if ('handleEvent' in listener) {
+            // @ts-ignore
+            listener.handleEvent(event);
+        }
+        else {
+            // @ts-ignore
+            listener(event);
+        }
+    };
+    ReconnectingWebSocket.prototype._removeListeners = function () {
+        if (!this._ws) {
+            return;
+        }
+        this._debug('removeListeners');
+        this._ws.removeEventListener('open', this._handleOpen);
+        this._ws.removeEventListener('close', this._handleClose);
+        this._ws.removeEventListener('message', this._handleMessage);
+        // @ts-ignore
+        this._ws.removeEventListener('error', this._handleError);
+    };
+    ReconnectingWebSocket.prototype._addListeners = function () {
+        if (!this._ws) {
+            return;
+        }
+        this._debug('addListeners');
+        this._ws.addEventListener('open', this._handleOpen);
+        this._ws.addEventListener('close', this._handleClose);
+        this._ws.addEventListener('message', this._handleMessage);
+        // @ts-ignore
+        this._ws.addEventListener('error', this._handleError);
+    };
+    ReconnectingWebSocket.prototype._clearTimeouts = function () {
+        clearTimeout(this._connectTimeout);
+        clearTimeout(this._uptimeTimeout);
+    };
+    return ReconnectingWebSocket;
+}());
 
-  if (source === this) {
-    if (this.verbose) {
-      console.log('ShareDBCodeMirror: skipping local op', op);
-    }
-    return;
-  }
-
-  if (this.verbose) {
-    console.log('ShareDBCodeMirror: applying op', op);
-  }
-
-  this._suppressChange = true;
-  this._applyChangesFromOp(op);
-  this._suppressChange = false;
-};
-
-/**
- * Stops listening for changes from the CodeMirror instance.
- */
-ShareDBCodeMirror.prototype.stop = function() {
-  if (!this._started) {
-    return;
-  }
-  this.codeMirror.off('change', this._changeListener);
-  this._started = false;
-  this.onStop();
-};
-
-ShareDBCodeMirror.prototype._applyChangesFromOp = function(op) {
-  var textIndex = 0;
-  var codeMirror = this.codeMirror;
-
-  op.forEach(function(part) {
-    switch (typeof part) {
-      case 'number': // skip n chars
-        textIndex += part;
-        break;
-      case 'string': // "chars" - insert "chars"
-        codeMirror.replaceRange(part, codeMirror.posFromIndex(textIndex));
-        textIndex += part.length;
-        break;
-      case 'object': // {d: num} - delete `num` chars
-        var from = codeMirror.posFromIndex(textIndex);
-        var to = codeMirror.posFromIndex(textIndex + part.d);
-        codeMirror.replaceRange('', from, to);
-        break;
-    }
-  });
-};
-
-ShareDBCodeMirror.prototype._handleChange = function(codeMirror, change) {
-  if (this._suppressChange) {
-    return;
-  }
-
-  var op = this._createOpFromChange(change);
-
-  if (this.verbose) {
-    console.log('ShareDBCodeMirror: produced op', op);
-  }
-
-  this.onOp(op);
-};
-
-ShareDBCodeMirror.prototype._createOpFromChange = function(change) {
-  var codeMirror = this.codeMirror;
-  var op = [];
-  var textIndex = 0;
-  var startLine = change.from.line;
-
-  for (var i = 0; i < startLine; i++) {
-    textIndex += codeMirror.lineInfo(i).text.length + 1; // + 1 for '\n'
-  }
-
-  textIndex += change.from.ch;
-
-  if (textIndex > 0) {
-    op.push(textIndex); // skip textIndex chars
-  }
-
-  if (change.to.line !== change.from.line || change.to.ch !== change.from.ch) {
-    var delLen = 0;
-    var numLinesRemoved = change.removed.length;
-
-    for (var i = 0; i < numLinesRemoved; i++) {
-      delLen += change.removed[i].length + 1; // +1 for '\n'
-    }
-
-    delLen -= 1; // last '\n' shouldn't be included
-
-    op.push({d: delLen}) // delete delLen chars
-  }
-
-  if (change.text) {
-    var text = change.text.join('\n');
-    if (text) {
-      op.push(text); // insert text
-    }
-  }
-
-  return op;
-};
+module.exports = ReconnectingWebSocket;
 
 },{}],15:[function(require,module,exports){
 var Doc = require('./doc');
@@ -9101,6 +9387,7 @@ var logger = require('../logger');
 var ShareDBError = require('../error');
 var types = require('../types');
 var util = require('../util');
+var clone = util.clone;
 var deepEqual = require('fast-deep-equal');
 
 var ERROR_CODE = ShareDBError.CODES;
@@ -9211,6 +9498,10 @@ function Doc(connection, collection, id) {
   // ops are still received. Should be toggled through the pause() and
   // resume() methods to correctly flush on resume.
   this.paused = false;
+
+  // Internal counter that gets incremented every time doc.data is updated.
+  // Used as a cheap way to check if doc.data has changed.
+  this._dataStateVersion = 0;
 }
 emitter.mixin(Doc);
 
@@ -9253,11 +9544,16 @@ Doc.prototype._setType = function(newType) {
   } else if (newType === null) {
     this.type = newType;
     // If we removed the type from the object, also remove its data
-    this.data = undefined;
+    this._setData(undefined);
   } else {
     var err = new ShareDBError(ERROR_CODE.ERR_DOC_TYPE_NOT_RECOGNIZED, 'Missing type ' + newType);
     return this.emit('error', err);
   }
+};
+
+Doc.prototype._setData = function(data) {
+  this.data = data;
+  this._dataStateVersion++;
 };
 
 // Ingest snapshot data. This data must include a version, snapshot and type.
@@ -9315,9 +9611,11 @@ Doc.prototype.ingestSnapshot = function(snapshot, callback) {
   this.version = snapshot.v;
   var type = (snapshot.type === undefined) ? types.defaultType : snapshot.type;
   this._setType(type);
-  this.data = (this.type && this.type.deserialize) ?
-    this.type.deserialize(snapshot.data) :
-    snapshot.data;
+  this._setData(
+    (this.type && this.type.deserialize) ?
+      this.type.deserialize(snapshot.data) :
+      snapshot.data
+  );
   this.emit('load');
   callback && callback();
 };
@@ -9719,7 +10017,7 @@ Doc.prototype._otApply = function(op, source) {
         }
         // Apply the individual op component
         this.emit('before op', componentOp.op, source, op.src);
-        this.data = this.type.apply(this.data, componentOp.op);
+        this._setData(this.type.apply(this.data, componentOp.op));
         this.emit('op', componentOp.op, source, op.src);
       }
       this.emit('op batch', op.op, source);
@@ -9732,7 +10030,7 @@ Doc.prototype._otApply = function(op, source) {
     // the snapshot before it gets changed
     this.emit('before op', op.op, source, op.src);
     // Apply the operation to the local data, mutating it in place
-    this.data = this.type.apply(this.data, op.op);
+    this._setData(this.type.apply(this.data, op.op));
     // Emit an 'op' event once the local data includes the changes from the
     // op. For locally submitted ops, this will be synchronously with
     // submission and before the server or other clients have received the op.
@@ -9745,11 +10043,15 @@ Doc.prototype._otApply = function(op, source) {
 
   if (op.create) {
     this._setType(op.create.type);
-    this.data = (this.type.deserialize) ?
-      (this.type.createDeserialized) ?
-        this.type.createDeserialized(op.create.data) :
-        this.type.deserialize(this.type.create(op.create.data)) :
-      this.type.create(op.create.data);
+    if (this.type.deserialize) {
+      if (this.type.createDeserialized) {
+        this._setData(this.type.createDeserialized(op.create.data));
+      } else {
+        this._setData(this.type.deserialize(this.type.create(op.create.data)));
+      }
+    } else {
+      this._setData(this.type.create(op.create.data));
+    }
     this.emit('create', source);
     return;
   }
@@ -10017,6 +10319,15 @@ Doc.prototype.resume = function() {
   this.flush();
 };
 
+// Create a snapshot that can be serialized, deserialized, and passed into `Doc.ingestSnapshot`.
+Doc.prototype.toSnapshot = function() {
+  return {
+    v: this.version,
+    data: clone(this.data),
+    type: this.type.uri
+  };
+};
+
 // *** Receiving operations
 
 // This is called when the server acknowledges an operation from the client.
@@ -10046,7 +10357,13 @@ Doc.prototype._rollback = function(err) {
   var op = this.inflightOp;
 
   if ('op' in op && op.type.invert) {
-    op.op = op.type.invert(op.op);
+    try {
+      op.op = op.type.invert(op.op);
+    } catch (error) {
+      // If the op doesn't support `.invert()`, we just reload the doc
+      // instead of trying to locally revert it.
+      return this._hardRollback(err);
+    }
 
     // Transform the undo operation by any pending ops.
     for (var i = 0; i < this.pendingOps.length; i++) {
@@ -10169,6 +10486,7 @@ function LocalDocPresence(presence, presenceId) {
 
   this._doc = this.connection.get(this.collection, this.id);
   this._isSending = false;
+  this._docDataVersionByPresenceVersion = {};
 
   this._opHandler = this._transformAgainstOp.bind(this);
   this._createOrDelHandler = this._handleCreateOrDel.bind(this);
@@ -10192,6 +10510,9 @@ LocalDocPresence.prototype.submit = function(value, callback) {
     return this._callbackOrEmit(error, callback);
   };
 
+  // Record the current data state version to check if we need to transform
+  // the presence later
+  this._docDataVersionByPresenceVersion[this.presenceVersion] = this._doc._dataStateVersion;
   LocalPresence.prototype.submit.call(this, value, callback);
 };
 
@@ -10220,6 +10541,7 @@ LocalDocPresence.prototype._sendPending = function() {
     });
 
     presence._pendingMessages = [];
+    presence._docDataVersionByPresenceVersion = {};
   });
 };
 
@@ -10233,9 +10555,18 @@ LocalDocPresence.prototype._registerWithDoc = function() {
 
 LocalDocPresence.prototype._transformAgainstOp = function(op, source) {
   var presence = this;
+  var docDataVersion = this._doc._dataStateVersion;
+
   this._pendingMessages.forEach(function(message) {
+    // Check if the presence needs transforming against the op - this is to check against
+    // edge cases where presence is submitted from an 'op' event
+    var messageDocDataVersion = presence._docDataVersionByPresenceVersion[message.pv];
+    if (messageDocDataVersion >= docDataVersion) return;
     try {
       message.p = presence._transformPresence(message.p, op, source);
+      // Ensure the presence's data version is kept consistent to deal with "deep" op
+      // submissions
+      presence._docDataVersionByPresenceVersion[message.pv] = docDataVersion;
     } catch (error) {
       var callback = presence._getCallback(message.pv);
       presence._callbackOrEmit(error, callback);
@@ -10260,6 +10591,7 @@ LocalDocPresence.prototype._handleCreateOrDel = function() {
 LocalDocPresence.prototype._handleLoad = function() {
   this.value = null;
   this._pendingMessages = [];
+  this._docDataVersionByPresenceVersion = {};
 };
 
 LocalDocPresence.prototype._message = function() {
@@ -11512,6 +11844,11 @@ exports.nextTick = function(callback) {
   });
 };
 
+exports.clone = function(obj) {
+  return (obj === undefined) ? undefined : JSON.parse(JSON.stringify(obj));
+};
+
+
 }).call(this)}).call(this,require('_process'))
 },{"_process":2}],36:[function(require,module,exports){
 /* =========================================================================== 
@@ -11520,16 +11857,23 @@ exports.nextTick = function(callback) {
 //TODO: update the fileview in intervals so that if multiple users create files
 // the changes will be visible to everyone.
 
-var sharedb = require('sharedb/lib/client');
-var otText = require('ot-text');
-var ShareDBCodeMirror = require('sharedb-codemirror');
-/*
-ShareDBCodeMirror.prototype.assertValue = function(expectedValue) {
-    return false;
-}*/
+/* TODO: Fix the cursor when two user's work together on the same document
+/* FIXME: Case 1 If user a edits above user b and presses enter X times then the cursor of
+/* user b must go down X lines. 
+/* FIXME: Case 2 If user a and user b work on the same line of the document then if user a
+/* adds something before the cursor of user b then user b cursor must advance by one character.
+/* TODO: To implement all of the above maybe add more data to the doc representing the position of
+   the cursor when the change was made.
+*/
+
+let sharedb = require('sharedb/lib/client');
+// Open WebSocket connection to ShareDB server
+let ReconnectingWebSocket = require('reconnecting-websocket');
+let otText = require('ot-text');
+
+let doc; // Doc must be global.
 
 sharedb.types.map['json0'].registerSubtype(otText.type);
-let doc; 
 
 const project_files = document.querySelector(".file_view");
 CodeMirror.modeURL = "/codemirror/codemirror-5.64.0/mode/%N/%N.js"
@@ -11734,29 +12078,34 @@ function display_data(e){
     let user = url[url.length - 2];
     let file = filepath;
     
-    
-
-
-
     get_file_data(filepath).then(response => {
 
+        let text_editor = document.querySelector("#editor");
+        let url = window.location.href.split("/");
+        let user = url[url.length - 2];
+        let file = filepath;
+
         // Unsubscribe from the previous doc to stop listening for changes
-        if(doc)
+        if(typeof doc !== 'undefined'){
             doc.unsubscribe();
+        }
 
-        var socket = new WebSocket("ws://" + location.host + `/${user}/${file}`);
-
-        var shareConnection = new sharedb.Connection(socket);
-
-        doc = shareConnection.get(user, file);
+        // Open a new connection
+        let socket = new ReconnectingWebSocket("ws://" + location.host + `/${user}/${file}`);
+        let connection = new sharedb.Connection(socket);
+        doc = connection.get(user, file);
+        
 
         if(myCodeMirror != null)
             myCodeMirror.toTextArea();
         
-        text_editor.value = "";
 
+        // Initialize code-mirror
+        text_editor.value = response.data.file_data;
         myCodeMirror = CodeMirror.fromTextArea(text_editor,{
             lineNumbers: true,
+            autoRefresh:true,
+            inputStyle: "textarea",
             extraKeys: {
                 "Ctrl-S": function(instance){ // On save make an request to the server
                     axios({
@@ -11784,25 +12133,88 @@ function display_data(e){
             myCodeMirror.setOption("mode", spec);
             CodeMirror.autoLoadMode(myCodeMirror, mode);
         }
-        
 
-        ShareDBCodeMirror.attachDocToCodeMirror(doc, myCodeMirror, {
-            key: 'content',
-            verbose: true,
-        }, function(){
-            let data = response.data.file_data;
+        // Fetch the doc's data
+        doc.fetch(function(e){
+            // First time we fetch this doc from the server
+            if(doc.version == 0){
+                doc.create({content: response.data.file_data});
+            }
+            // Subscribe to the doc to start listening for changes
+            doc.subscribe(function(err) {
+                if (err) throw err;
+                let data = doc.data.content.data ? doc.data.content.data : doc.data.content;
+                myCodeMirror.setValue(data);
+            });
 
-            // If this is not the first doc created
-            // then display the data of the doc that is on the server
-            if(doc.version > 1)
-                data = doc.data.content;
-
-            myCodeMirror.setValue(data);
         });
 
+        let cursor;
+        /* On code-mirror change(something was typed) fetch the doc from the server.
+         * If the doc's data doesn't match the current data then submit the changes to the
+         * doc else return.
+        */
+       // Use the change object here
+        myCodeMirror.on("change", (mirror, change_obj)=>{
+            doc.fetch(() => {
+                
+                if(doc.data){
+                    if(doc.data.content === myCodeMirror.getValue()){
+                        return;
+                    }
+                    else{
+                        // Pass the editor change to the doc
+                        let content = {
+                            data : myCodeMirror.getValue(),
+                            change : change_obj,
+                            user : document.querySelector(".username").textContent.trim()
+                        }
+                        doc.submitOp([{p: ['content'], oi: content}]);
+                    }
+                }
+            })
+        });
+
+        /* When an operation is called on the doc update the 
+         * code-mirror data. This is done because multiple user's can share
+         * a doc and listen for the changes so code-mirror must be updated.
+         * This alsos causes a recursion loop with the above listener if not handled
+         * correctly and that's why we compare the code-mirror data with the doc data
+         * before submiting the operation.
+         */
+        doc.on("op", ()=>{
+            doc.fetch(()=>{
+                let change = doc.data.content.change;
+                let username = doc.data.content.user;
+                
+                /* Ignore changes by the current user or changes that occured when opening the editor */
+                if(username === document.querySelector(".username").textContent.trim() || change.origin === "setValue")
+                    return;
+
+                console.log(doc.data.content);
+
+                // Change was a single input
+                if(change.origin == "+input"){
+                    cursor = myCodeMirror.getDoc().getCursor();
+                    myCodeMirror.replaceRange(change.text, change.from, change.to);
+                    myCodeMirror.focus();
+                    myCodeMirror.getDoc().setCursor(cursor);
+                }
+
+                // TODO: user doc.replaceRange insted of setValue
+                //cursor = myCodeMirror.getDoc().getCursor();
+                //myCodeMirror.setValue(doc.data.content)
+                //myCodeMirror.focus();
+                //myCodeMirror.getDoc().setCursor(cursor);
+            })
+        })
+
         myCodeMirror.setSize(1000 , 800);
+
     });
 }
+
+
 
 /* =========================================================================== 
  * Code used for file or folder creation.
@@ -11955,4 +12367,4 @@ function add_folder(){
         input_container.style.display = "none";
     
 }
-},{"ot-text":12,"sharedb-codemirror":14,"sharedb/lib/client":17}]},{},[36]);
+},{"ot-text":12,"reconnecting-websocket":14,"sharedb/lib/client":17}]},{},[36]);
