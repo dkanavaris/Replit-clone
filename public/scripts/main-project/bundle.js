@@ -11854,24 +11854,13 @@ exports.clone = function(obj) {
 /* =========================================================================== 
  * Code used for file view actions .
  *=========================================================================== */
-//TODO: update the fileview in intervals so that if multiple users create files
-// the changes will be visible to everyone.
-
-/* TODO: Fix the cursor when two user's work together on the same document
-/* FIXME: Case 1 If user a edits above user b and presses enter X times then the cursor of
-/* user b must go down X lines. 
-/* FIXME: Case 2 If user a and user b work on the same line of the document then if user a
-/* adds something before the cursor of user b then user b cursor must advance by one character.
-/* TODO: To implement all of the above maybe add more data to the doc representing the position of
-   the cursor when the change was made.
-*/
-
 let sharedb = require('sharedb/lib/client');
 // Open WebSocket connection to ShareDB server
 let ReconnectingWebSocket = require('reconnecting-websocket');
 let otText = require('ot-text');
 
-let doc; // Doc must be global.
+let doc; // Doc must be global. This doc is used by the editor
+let file_view_doc;
 
 sharedb.types.map['json0'].registerSubtype(otText.type);
 
@@ -11913,9 +11902,45 @@ async function get_file_data(filepath){
 }
 
 window.onload = (event) => {
+
+    let url = window.location.href.split("/");
+    let user = url[url.length - 2];
+    let project = url[url.length - 1];
+    
+    // Unsubscribe from the previous doc to stop listening for changes
+    if(typeof file_view_doc !== 'undefined'){
+        file_view_doc.unsubscribe();
+    }
+
+    // Open a new connection
+    let socket = new ReconnectingWebSocket("ws://" + location.host + `/${user}/${project}`);
+    let connection = new sharedb.Connection(socket);
+    file_view_doc = connection.get(user, project);
+
+    // Fetch the doc's data
+    file_view_doc.fetch(function(e){
+        // First time we fetch this doc from the server
+        if(file_view_doc.version == 0){
+            file_view_doc.create({content: ""});
+        }
+        // Subscribe to the doc to start listening for changes
+        file_view_doc.subscribe(function(err) {
+        });
+    });
+    
+    // On file_view_doc update the fileview
+    file_view_doc.on("op", () =>{
+        /* Erase the old data */
+        project_files.innerHTML = "";
+        get_project_data().then(response => 
+            {update_file_view(project_files, "", response.data.children, "block", 0);})
+    });
+
     get_project_data().then(response => 
         {update_file_view(project_files, "", response.data.children, "block", 0);})
 };
+
+
 
 function update_file_view(parent_div, parent_dir,  data, display, margin_left){
     
@@ -12146,7 +12171,6 @@ function display_data(e){
                 let data = doc.data.content.data ? doc.data.content.data : doc.data.content;
                 myCodeMirror.setValue(data);
             });
-
         });
 
         let cursor;
@@ -12157,9 +12181,9 @@ function display_data(e){
        // Use the change object here
         myCodeMirror.on("change", (mirror, change_obj)=>{
             doc.fetch(() => {
-                
+                console.log(change_obj);
                 if(doc.data){
-                    if(doc.data.content === myCodeMirror.getValue()){
+                    if(doc.data.content.data === myCodeMirror.getValue()){
                         return;
                     }
                     else{
@@ -12184,36 +12208,60 @@ function display_data(e){
          */
         doc.on("op", ()=>{
             doc.fetch(()=>{
-                let change = doc.data.content.change;
-                let username = doc.data.content.user;
-                
-                /* Ignore changes by the current user or changes that occured when opening the editor */
-                if(username === document.querySelector(".username").textContent.trim() || change.origin === "setValue")
-                    return;
+                if(doc.data){
+                    if(doc.data.content.data === myCodeMirror.getValue())
+                        return;
+                    
+                    let change = doc.data.content.change;
+                    let username = doc.data.content.user;
+                    
+                    /* Ignore changes by the current user or changes that occured when opening the editor */
+                    if(username === document.querySelector(".username").textContent.trim() || change.origin === "setValue")
+                        return;
+                    
+                    console.log(doc.data.content);
 
-                console.log(doc.data.content);
-
-                // Change was a single input
-                if(change.origin == "+input"){
-                    cursor = myCodeMirror.getDoc().getCursor();
-                    myCodeMirror.replaceRange(change.text, change.from, change.to);
-                    myCodeMirror.focus();
-                    myCodeMirror.getDoc().setCursor(cursor);
+                    // Change was a single input
+                    if(change.origin == "+input"){
+                        if(change.text.length == 2){ // Newline was added
+                            myCodeMirror.replaceRange("\n", change.from, change.to);
+                        }
+                        else{
+                            // If line is empty add some spaces before the characters
+                            if(myCodeMirror.getDoc().getLine(change.from.line).trim().length == 0){
+                                for(let i = 0; i < change.from.ch; i++)
+                                    myCodeMirror.replaceRange(" ", change.from, change.to);
+                            }
+                            myCodeMirror.replaceRange(change.text, change.from, change.to);
+                        }
+                    }
+                    else if(change.origin == "+delete" || change.origin == "paste" || change.origin == "undo"){
+                        myCodeMirror.replaceRange(change.text, change.from, change.to);
+                    }
                 }
-
-                // TODO: user doc.replaceRange insted of setValue
-                //cursor = myCodeMirror.getDoc().getCursor();
-                //myCodeMirror.setValue(doc.data.content)
-                //myCodeMirror.focus();
-                //myCodeMirror.getDoc().setCursor(cursor);
-            })
+            });
         })
+
+        
+        setInterval(() => {
+            console.log("Assert")
+            doc.fetch(()=>{
+                if(doc.data.content.data){
+                    if(doc.data.content.data !== myCodeMirror.getValue()){
+                        cursor = myCodeMirror.getDoc().getCursor();
+                        myCodeMirror.setValue(doc.data.content.data);
+                        myCodeMirror.focus();
+                        myCodeMirror.getDoc().setCursor(cursor);
+                    }
+                }
+            });
+        }, 1000000);
+        
 
         myCodeMirror.setSize(1000 , 800);
 
     });
 }
-
 
 
 /* =========================================================================== 
@@ -12316,11 +12364,7 @@ async function create_request(){
     file_input_visible = folder_input_visible = false;
     input_container.style.display = "none";
 
-    /* Since the request was completed update the file-view  */
-    /* Erase the data from file view */
-    project_files.innerHTML = "";
-    get_project_data().then(response => 
-        {update_file_view(project_files, "", response.data.children, "block", 1);});
+    file_view_doc.submitOp([{p: ['content'], oi: "new"}]);
 }
 
 function add_file(){
