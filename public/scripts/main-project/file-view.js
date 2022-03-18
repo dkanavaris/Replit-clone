@@ -5,6 +5,7 @@ let sharedb = require('sharedb/lib/client');
 // Open WebSocket connection to ShareDB server
 let ReconnectingWebSocket = require('reconnecting-websocket');
 let otText = require('ot-text');
+let xterm = require('xterm');
 
 let doc; // Doc must be global. This doc is used by the editor
 let file_view_doc;
@@ -20,6 +21,21 @@ const HOVER_COLOR = "grey" // The hover color
 
 /* Erase the data from file view */
 project_files.innerHTML = "";
+
+
+
+let term = new xterm.Terminal();
+term.open(document.getElementById('terminal'));
+term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
+
+//TODO: maybe use keyboardevent.key
+term.onKey((key, ev) => {
+
+    console.log(key)
+    if(key.key == '\n')
+        term.write("\n");
+    term.write(key.key);
+});
 
 /* Event listener to choose the main project file */
 project_files.addEventListener("click", function(e){

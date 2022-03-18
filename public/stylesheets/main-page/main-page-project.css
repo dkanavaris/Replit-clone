@@ -49,7 +49,7 @@ body {
 
 .main-body{
     display: grid;
-    grid-template-columns: 18% 1fr;
+    grid-template-columns: 18% 1fr 30%;
     grid-template-rows: 1;
 }
 
