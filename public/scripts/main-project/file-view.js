@@ -5,7 +5,9 @@ let sharedb = require('sharedb/lib/client');
 // Open WebSocket connection to ShareDB server
 let ReconnectingWebSocket = require('reconnecting-websocket');
 let otText = require('ot-text');
+
 let xterm = require('xterm');
+let fitaddon = require('xterm-addon-fit');
 
 let doc; // Doc must be global. This doc is used by the editor
 let file_view_doc;
@@ -22,12 +24,20 @@ const HOVER_COLOR = "grey" // The hover color
 /* Erase the data from file view */
 project_files.innerHTML = "";
 
-
+let sock = new WebSocket("ws://localhost:4000");
+sock.addEventListener("open", (event) =>{
+    console.log("Opened the sock");
+    sock.send("Hello s client");
+})
 
 let term = new xterm.Terminal();
+let fit_addon = new fitaddon.FitAddon();
+term.loadAddon(fit_addon);
+
 term.open(document.getElementById('terminal'));
 term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
 
+fit_addon.fit();
 //TODO: maybe use keyboardevent.key
 term.onKey((key, ev) => {
 
@@ -79,7 +89,8 @@ window.onload = (event) => {
     let socket = new ReconnectingWebSocket("ws://" + location.host + `/${user}/${project}`);
     let connection = new sharedb.Connection(socket);
     file_view_doc = connection.get(user, project);
-
+    console.log(location.host);
+    
     // Fetch the doc's data
     file_view_doc.fetch(function(e){
         // First time we fetch this doc from the server

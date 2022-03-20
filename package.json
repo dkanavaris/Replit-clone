@@ -28,6 +28,7 @@
 		"sharedb": "^2.2.2",
 		"sharedb-string-binding": "^1.0.0",
 		"ws": "^8.4.2",
-		"xterm": "^4.18.0"
+		"xterm": "^4.18.0",
+		"xterm-addon-fit": "^0.5.0"
 	}
 }

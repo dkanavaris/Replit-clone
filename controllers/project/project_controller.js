@@ -1,8 +1,20 @@
 const Project = require("../../mongoose-models/project_model");
 const fs = require("fs");
 const path = require('path');
+const ws = require("ws").Server;
+
 //TODO: add semaphores so multiple users cannot save,create,delete togethen
 
+let server = new ws({port : 4000});
+console.log(server);
+
+server.on('connection', (ws) => {
+    console.log("Got connection");
+    ws.on('message', (msg) => {
+        console.log("Message received========================");
+        console.log(msg.toString('utf-8'));
+    })
+})
 async function get_path(req){
     const project_name = req.params.project_name
     const username = req.params.username.replace("@", "");
@@ -84,10 +96,8 @@ exports.main_page_project = async function(req, res){
     /* Else store the current project path to a local 
      * variable and redirect to project page. */
     //req.app.locals.currentProjectPath = project_path.path;
-
-    
-
     res.render("project", {url: req.url, project_name: project_name});
+
 }
 
 /* Returns the contents of filename if filename is a directory ,or the
