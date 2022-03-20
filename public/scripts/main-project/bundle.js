@@ -11884,6 +11884,7 @@ let term = new xterm.Terminal();
 term.open(document.getElementById('terminal'));
 term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
 
+//TODO: maybe use keyboardevent.key
 term.onKey((key, ev) => {
 
     console.log(key)
