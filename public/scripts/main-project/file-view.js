@@ -8,6 +8,7 @@ let otText = require('ot-text');
 
 let xterm = require('xterm');
 let fitaddon = require('xterm-addon-fit');
+let attachAddon = require('xterm-addon-attach');
 
 let doc; // Doc must be global. This doc is used by the editor
 let file_view_doc;
@@ -24,28 +25,65 @@ const HOVER_COLOR = "grey" // The hover color
 /* Erase the data from file view */
 project_files.innerHTML = "";
 
-let sock = new WebSocket("ws://localhost:4000");
-sock.addEventListener("open", (event) =>{
-    console.log("Opened the sock");
-    sock.send("Hello s client");
-})
+function send_size_to_server(term, sock){
+    let cols = term.cols.toString();
+    let rows = term.rows.toString();
+    while (cols.length < 3) {
+        cols = "0"+cols;
+    }
+    while (rows.length < 3) {
+        rows = "0"+rows;
+    }
+    sock.send("ESCAPED|-- RESIZE:"+cols+";"+rows);
+}
 
-let term = new xterm.Terminal();
-let fit_addon = new fitaddon.FitAddon();
-term.loadAddon(fit_addon);
+create_terminal();
 
-term.open(document.getElementById('terminal'));
-term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
+async function create_terminal(){
 
-fit_addon.fit();
+    let data = await axios({
+        method: 'get',
+        url: window.location.href + "/get_terminal",
+    });
+
+    let term = new xterm.Terminal({cols:80, rows:24});
+    let fit_addon = new fitaddon.FitAddon();
+
+    term.loadAddon(fit_addon);
+
+    term.open(document.getElementById('terminal'));
+
+    fit_addon.fit();
+
+
+    let sock = new WebSocket("ws://localhost:" + data.data);
+    sock.addEventListener("open", (event) =>{
+        let attach_addon = new attachAddon.AttachAddon(sock);
+        term.loadAddon(attach_addon);
+        term.name = "test_path";
+    });
+
+    setTimeout(() =>{
+        send_size_to_server(term, sock);
+    }, 1000);
+}
+
+let url = window.location.href.split("/");
+let user = url[url.length - 2];
+let project = url[url.length - 1];
+
+
+
+
 //TODO: maybe use keyboardevent.key
+/*
 term.onKey((key, ev) => {
 
     console.log(key)
     if(key.key == '\n')
         term.write("\n");
     term.write(key.key);
-});
+});*/
 
 /* Event listener to choose the main project file */
 project_files.addEventListener("click", function(e){

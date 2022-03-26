@@ -2,19 +2,11 @@ const Project = require("../../mongoose-models/project_model");
 const fs = require("fs");
 const path = require('path');
 const ws = require("ws").Server;
+const pty = require('node-pty');
+const stripAnsi = require('strip-ansi');
 
 //TODO: add semaphores so multiple users cannot save,create,delete togethen
 
-let server = new ws({port : 4000});
-console.log(server);
-
-server.on('connection', (ws) => {
-    console.log("Got connection");
-    ws.on('message', (msg) => {
-        console.log("Message received========================");
-        console.log(msg.toString('utf-8'));
-    })
-})
 async function get_path(req){
     const project_name = req.params.project_name
     const username = req.params.username.replace("@", "");
@@ -74,6 +66,167 @@ exports.get_project_files = async function(req, res){
     res.json(dirTree(path));
 }
 
+
+exports.get_terminal = async function(req, res){
+    //TODO: Start a server socket for this user on this project
+    const tty = pty.spawn("wsl.exe", [], {
+        name: 'xterm-color',
+        cols: 80,
+        rows: 24,
+        cwd: process.cwd() + "\\users\\" + req.params.username + "\\" + req.params.project_name,
+        env: process.env
+    });
+    
+    let clear = Buffer.from("15", 'hex');
+    let newline = Buffer.from("0d", 'hex')
+
+    let keyup = Buffer.alloc(3);
+    let keydown = Buffer.alloc(3);
+    let keyright = Buffer.alloc(3);
+    let keyleft = Buffer.alloc(3);
+
+    keyup[0] = "27";
+    keyup[1] = "91";
+    keyup[2] = "65";
+    
+    keydown[0] = "27";
+    keydown[1] = "91";
+    keydown[2] = "66";
+
+    keyright[0] = "27";
+    keyright[1] = "91";
+    keyright[2] = "67";
+
+    keyleft[0] = "27";
+    keyleft[1] = "91";
+    keyleft[2] = "68";
+
+    tty.write("export PS1='Replit Clone > '\r\n"); // Change the terminal name
+    tty.write("history -c \r\n"); // Delete the history for this terminal
+    tty.write("clear" + newline)
+
+    let server = new ws({port: 0});
+    let keypressed = false;
+    let cursor_pos = -1;
+
+    server.on('connection', (ws) => {
+
+        let command = "";
+        ws.on('message', (msg) => {
+        
+            let recv = msg.toString();
+            if(recv.startsWith("ESCAPED|-- ")){
+                console.log("Resizing");
+                recv = recv.substr(18);
+                let cols = recv.slice(0, -4);
+                let rows = recv.substr(4);
+                tty.resize(Number(cols), Number(rows));
+            }
+        
+            else{
+
+                let obj = JSON.parse(JSON.stringify(msg));
+
+                console.log("MSG : ", obj);
+                //console.log("My buffer : ", clear);
+                //console.log(msg);
+                
+                //tty.write(msg);
+
+                // FIXME: Collpase keyup and keydown
+                if(msg.equals(keyup)){ // KEYUP handler
+                    keypressed = true;
+                    // Set the flag that the key was pressed
+                    console.log("KEYUP==========================================");
+                    tty.write(msg);
+                }
+                
+                else if(msg.equals(keydown)){ // KEYDOWN handler
+                    // Set the flag that the key was pressed
+                    keypressed = true;
+                    console.log("KEYDOWN==========================================");
+                    tty.write(msg);
+                }
+
+                else if(msg.equals(keyright)){ // RIGHTKEY handler
+                    // Move the cursor
+                    if(cursor_pos < command.length)
+                        cursor_pos++;
+                    tty.write(msg);
+                }
+
+                else if(msg.equals(keyleft)){ // LEFTKEY handler
+                    // Move the cursor
+                    if(cursor_pos >= 0)
+                        cursor_pos--;
+                    tty.write(msg);
+                }
+
+                // ASCII used to determine if characters are printable check ASCII.png
+                else if(obj.data >= 32 && obj.data <= 126){
+                    cursor_pos++;
+                    // Add the input at cursor position
+                    command = command.slice(0, cursor_pos) + msg.toString() + command.slice(cursor_pos)
+                    tty.write(msg);
+                }
+
+                else if(obj.data == 127){ //Backspace
+                    if(cursor_pos >= 0){
+                        console.log("Cursor at ", cursor_pos)
+                        console.log("Before ", command);
+                        command = command.substring(0, cursor_pos) + command.substring(cursor_pos + 1, command.length)
+                        console.log("After ", command);
+                        cursor_pos--;
+                        tty.write(msg);
+                    }
+                }
+
+                else if(obj.data == 13){ //Enter, newline
+                    console.log("newline-====================");
+                    console.log("Will execute ", command);
+                    if(command.includes("export")){
+                        ws.send(Buffer.from(`\n\x1b[91mCannot execute ${command}\n\x1b[m`));
+                        tty.write(clear)
+                        tty.write(newline);
+                    }
+                    tty.write(msg);
+                    command = "";
+                    cursor_pos = -1;
+                    //TODO: sanitize the command and check if it ok
+                }
+
+                else if(obj.data == 3){ // Ctrl-C
+                    command = "";
+                    cursor_pos = -1;
+                    tty.write(msg);
+                }
+                else{
+                    tty.write(msg);
+                }
+            }  
+        });
+
+        tty.on('data', (data) => {
+            try{
+
+                
+                if(keypressed){
+                    keypressed = false;
+                    command = stripAnsi(data.toString('utf-8'));
+                    command.replace("Replit Clone > ", "");
+                    cursor_pos = command.length - 1;
+                    console.log("Command to be exec ", command);
+                }
+                
+                ws.send(data);
+            }catch(e){
+            }
+        })
+    });
+
+    res.json(server.address().port);
+}
+
 exports.main_page_project = async function(req, res){
 
     /* If user is not logged in redirect him to log in */
@@ -97,7 +250,6 @@ exports.main_page_project = async function(req, res){
      * variable and redirect to project page. */
     //req.app.locals.currentProjectPath = project_path.path;
     res.render("project", {url: req.url, project_name: project_name});
-
 }
 
 /* Returns the contents of filename if filename is a directory ,or the

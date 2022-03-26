@@ -7,6 +7,8 @@ router.get("/:username/:project_name/get_file/:path*", project_controller.get_fi
 
 router.get("/:username/:project_name/get_project_files", project_controller.get_project_files);
 
+router.get("/:username/:project_name/get_terminal", project_controller.get_terminal);
+
 router.post("/:username/:project_name/save_file/:filepath*", project_controller.save_file);
 
 router.post("/:username/:project_name/file_create/:filepath*", project_controller.file_create);
