@@ -7,12 +7,17 @@ const stripAnsi = require('strip-ansi');
 
 //TODO: add semaphores so multiple users cannot save,create,delete togethen
 
+const TERMINAL_JSON = require("../../terminal.json");
+const BACKEND_PATH = TERMINAL_JSON.BACKEND_PATH;
+const UNAUTHORIZED_COMMANDS = TERMINAL_JSON.UNAUTHORIZED_COMMANDS;
+
 async function get_path(req){
     const project_name = req.params.project_name
     const username = req.params.username.replace("@", "");
     const project_path = await Project.findOne({name: project_name, owner: username});
     return project_path.path;
 }
+
 exports.file_create = async function(req, res){
 
     let path = await get_path(req);
@@ -68,6 +73,7 @@ exports.get_project_files = async function(req, res){
 
 
 exports.get_terminal = async function(req, res){
+    
     //TODO: Start a server socket for this user on this project
     const tty = pty.spawn("wsl.exe", [], {
         name: 'xterm-color',
@@ -77,8 +83,10 @@ exports.get_terminal = async function(req, res){
         env: process.env
     });
     
+
     let clear = Buffer.from("15", 'hex');
-    let newline = Buffer.from("0d", 'hex')
+    let newline = Buffer.from("0d", 'hex');
+    let tab = Buffer.from("09", "hex");
 
     let keyup = Buffer.alloc(3);
     let keydown = Buffer.alloc(3);
@@ -107,8 +115,17 @@ exports.get_terminal = async function(req, res){
 
     let server = new ws({port: 0});
     let keypressed = false;
+    let tab_pressed = false;
     let cursor_pos = -1;
 
+    let print_custom = false;
+    let custom_message = "";
+
+    const project_name = req.params.project_name;
+    const username = req.params.username.replace("@", "");
+    let root_path = `${username}/${project_name}`;
+    let curr_path = root_path; // Keep track of the current path
+    
     server.on('connection', (ws) => {
 
         let command = "";
@@ -127,7 +144,7 @@ exports.get_terminal = async function(req, res){
 
                 let obj = JSON.parse(JSON.stringify(msg));
 
-                console.log("MSG : ", obj);
+                console.log("MSG : ", obj); //TODO: helpful uncommenct it
                 //console.log("My buffer : ", clear);
                 //console.log(msg);
                 
@@ -162,6 +179,11 @@ exports.get_terminal = async function(req, res){
                     tty.write(msg);
                 }
 
+                else if(msg.equals(tab)){
+                    tab_pressed = true;
+                    tty.write(msg);
+                }
+
                 // ASCII used to determine if characters are printable check ASCII.png
                 else if(obj.data >= 32 && obj.data <= 126){
                     cursor_pos++;
@@ -174,7 +196,7 @@ exports.get_terminal = async function(req, res){
                     if(cursor_pos >= 0){
                         console.log("Cursor at ", cursor_pos)
                         console.log("Before ", command);
-                        command = command.substring(0, cursor_pos) + command.substring(cursor_pos + 1, command.length)
+                        command = command.substring(0, cursor_pos) + command.substring(cursor_pos + 1, command.length);
                         console.log("After ", command);
                         cursor_pos--;
                         tty.write(msg);
@@ -182,16 +204,33 @@ exports.get_terminal = async function(req, res){
                 }
 
                 else if(obj.data == 13){ //Enter, newline
-                    console.log("newline-====================");
+                    //console.log("newline-====================");
+                    
+                    command = stripAnsi(command);
                     console.log("Will execute ", command);
-                    if(command.includes("export")){
-                        ws.send(Buffer.from(`\n\x1b[91mCannot execute ${command}\n\x1b[m`));
-                        tty.write(clear)
-                        tty.write(newline);
+                    if(UNAUTHORIZED_COMMANDS.some(substring=>command.includes(substring))){
+                        custom_message = (Buffer.from(`\x1b[91mCannot execute ${command}\x1b[m`));
+                        print_custom = true;
+                        // If the cursor is not at the end of the command move it there so the
+                        // clear takes affect.
+                        for(let i = cursor_pos; i <= (command.length - cursor_pos) + 1; i++)
+                            tty.write(keyright)
+                        
+                        tty.write(clear + newline + newline)
                     }
-                    tty.write(msg);
-                    command = "";
+
+                    else if(command == "pwd"){
+                        print_custom = true
+                        custom_message = Buffer.from(root_path)
+                        tty.write(newline)
+                    }
+
+                    else
+                        tty.write(msg);
+                    
+                        command = "";
                     cursor_pos = -1;
+                    
                     //TODO: sanitize the command and check if it ok
                 }
 
@@ -205,20 +244,55 @@ exports.get_terminal = async function(req, res){
                 }
             }  
         });
-
-        tty.on('data', (data) => {
+        
+        tty.onData((data) => {
             try{
 
+                //console.log(JSON.stringify(data));
                 
+                // Up or down arrow was pressed so get the new command
                 if(keypressed){
                     keypressed = false;
                     command = stripAnsi(data.toString('utf-8'));
                     command.replace("Replit Clone > ", "");
                     cursor_pos = command.length - 1;
                     console.log("Command to be exec ", command);
+                    ws.send(data);
                 }
                 
-                ws.send(data);
+                // Tab was pressed and the command was filled
+                else if(tab_pressed){
+                    tab_pressed = false;
+                    let added = stripAnsi(data.toString('utf-8'));
+                    if(!data.includes("\r\n")){
+                        command += added;
+                        cursor_pos = command.length - 1;
+                        ws.send(data);
+                    }
+                }
+               
+                // Custom error message
+                else if(print_custom && data.includes("Replit Clone >")){
+                    console.log("Here1\n")
+                    ws.send(data);
+                    ws.send(`\x1b[s\x1b[1F\x1b[2K${custom_message}\x1b[u`);
+                    print_custom = false;
+                }
+                
+                // If it is a custom message of a command that will indeed execute on the backend
+                // handle if the output was split into multiple sends
+                
+                // This handles the case where pwd was executed and the data of the path and the new 
+                // line were sent seperately
+                else if(print_custom && data.includes(BACKEND_PATH)){
+                    console.log("Here2\n")
+                    ws.send(`\x1b[1E${custom_message}\x1b[1E`);
+                    print_custom = false;
+                }
+
+                else
+                    ws.send(data);
+                
             }catch(e){
             }
         })
