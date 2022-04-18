@@ -206,8 +206,13 @@ exports.get_terminal = async function(req, res){
                 else if(obj.data == 13){ //Enter, newline
                     //console.log("newline-====================");
                     
-                    command = stripAnsi(command);
+                    command = stripAnsi(command); // Remove ANSI characters
+                    command = command.replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove unicode characters
+                    command = command.replace(/\s{2,}/g, ' ').trim(); // Remove exccess whitespace
+            
                     console.log("Will execute ", command);
+
+                    // Check for unauthorized commandss
                     if(UNAUTHORIZED_COMMANDS.some(substring=>command.includes(substring))){
                         custom_message = (Buffer.from(`\x1b[91mCannot execute ${command}\x1b[m`));
                         print_custom = true;
@@ -219,6 +224,7 @@ exports.get_terminal = async function(req, res){
                         tty.write(clear + newline + newline)
                     }
 
+                    // Check if pwd was entered
                     else if(command == "pwd"){
                         print_custom = true
                         custom_message = Buffer.from(root_path)
@@ -228,10 +234,9 @@ exports.get_terminal = async function(req, res){
                     else
                         tty.write(msg);
                     
-                        command = "";
+                    command = "";
                     cursor_pos = -1;
                     
-                    //TODO: sanitize the command and check if it ok
                 }
 
                 else if(obj.data == 3){ // Ctrl-C

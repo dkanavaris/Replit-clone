@@ -2,6 +2,6 @@
     "BACKEND_PATH": "/mnt/c/Users",
     "UNAUTHORIZED_COMMANDS": [
         "export",
-        "sudo"
+        "sudo python3"
     ]
 }
