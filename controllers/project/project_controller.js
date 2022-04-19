@@ -10,6 +10,7 @@ const stripAnsi = require('strip-ansi');
 const TERMINAL_JSON = require("../../terminal.json");
 const BACKEND_PATH = TERMINAL_JSON.BACKEND_PATH;
 const UNAUTHORIZED_COMMANDS = TERMINAL_JSON.UNAUTHORIZED_COMMANDS;
+const CWD = process.cwd();
 
 async function get_path(req){
     const project_name = req.params.project_name
@@ -72,14 +73,21 @@ exports.get_project_files = async function(req, res){
 }
 
 
+function is_subdir(parent, dir){
+    const relative = path.relative(parent, dir);
+    return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 exports.get_terminal = async function(req, res){
-    
-    //TODO: Start a server socket for this user on this project
+
+    // Change the working directory to this project
+    process.chdir(CWD + "\\users\\" + req.params.username + "\\" + req.params.project_name);
+
     const tty = pty.spawn("wsl.exe", [], {
         name: 'xterm-color',
         cols: 80,
         rows: 24,
-        cwd: process.cwd() + "\\users\\" + req.params.username + "\\" + req.params.project_name,
+        cwd: process.cwd(),
         env: process.env
     });
     
@@ -123,8 +131,9 @@ exports.get_terminal = async function(req, res){
 
     const project_name = req.params.project_name;
     const username = req.params.username.replace("@", "");
-    let root_path = `${username}/${project_name}`;
-    let curr_path = root_path; // Keep track of the current path
+    
+    const root_path = process.cwd();
+    let curr_path = root_path;
     
     server.on('connection', (ws) => {
 
@@ -144,7 +153,7 @@ exports.get_terminal = async function(req, res){
 
                 let obj = JSON.parse(JSON.stringify(msg));
 
-                console.log("MSG : ", obj); //TODO: helpful uncommenct it
+                //console.log("MSG : ", obj); //TODO: helpful uncommenct it
                 //console.log("My buffer : ", clear);
                 //console.log(msg);
                 
@@ -212,8 +221,23 @@ exports.get_terminal = async function(req, res){
             
                     console.log("Will execute ", command);
 
+                    if(command.includes("cd")){
+                        command = command.split(" ");
+                        curr_path += `\\${command[1]}`;
+
+                        console.log(command)
+                        
+                        console.log(path.resolve(curr_path));
+                        curr_path = path.resolve(curr_path);
+
+                        if(is_subdir(curr_path, root_path)){
+                            console.log("Went to farsadasdsa");
+                        }
+                        tty.write(msg)
+                    }
+
                     // Check for unauthorized commandss
-                    if(UNAUTHORIZED_COMMANDS.some(substring=>command.includes(substring))){
+                    else if(UNAUTHORIZED_COMMANDS.some(substring=>command.includes(substring))){
                         custom_message = (Buffer.from(`\x1b[91mCannot execute ${command}\x1b[m`));
                         print_custom = true;
                         // If the cursor is not at the end of the command move it there so the
@@ -227,7 +251,12 @@ exports.get_terminal = async function(req, res){
                     // Check if pwd was entered
                     else if(command == "pwd"){
                         print_custom = true
-                        custom_message = Buffer.from(root_path)
+                        let abs_path = process.cwd();
+                        let index = abs_path.indexOf(`${project_name}`);
+                        console.log("Index is ", index);
+                        let curr_path = abs_path.substring(index, abs_path.length);
+                        console.log(`Abs ${abs_path}\nCurr ${JSON.parse(JSON.stringify(process.env))}`);
+                        custom_message = Buffer.from(curr_path);
                         tty.write(newline)
                     }
 
@@ -254,12 +283,14 @@ exports.get_terminal = async function(req, res){
             try{
 
                 //console.log(JSON.stringify(data));
-                
+
+                //console.log(JSON.stringify(data));
+
                 // Up or down arrow was pressed so get the new command
                 if(keypressed){
                     keypressed = false;
                     command = stripAnsi(data.toString('utf-8'));
-                    command.replace("Replit Clone > ", "");
+                    command.replace(`Replit Clone >`, "");
                     cursor_pos = command.length - 1;
                     console.log("Command to be exec ", command);
                     ws.send(data);
@@ -277,7 +308,7 @@ exports.get_terminal = async function(req, res){
                 }
                
                 // Custom error message
-                else if(print_custom && data.includes("Replit Clone >")){
+                else if(print_custom && data.includes(`Replit Clone >`)){
                     console.log("Here1\n")
                     ws.send(data);
                     ws.send(`\x1b[s\x1b[1F\x1b[2K${custom_message}\x1b[u`);
@@ -297,6 +328,7 @@ exports.get_terminal = async function(req, res){
 
                 else
                     ws.send(data);
+                
                 
             }catch(e){
             }
