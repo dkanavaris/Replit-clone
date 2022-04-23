@@ -1,5 +1,5 @@
 {
-    "BACKEND_PATH": "/mnt/c/Users",
+    "BACKEND_PATH": "/mnt/c/Users/Jim/Desktop/Replit-clone/users",
     "UNAUTHORIZED_COMMANDS": [
         "export",
         "sudo python3"

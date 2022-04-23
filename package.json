@@ -27,6 +27,7 @@
 		"ot-text": "^1.0.2",
 		"passport": "^0.5.0",
 		"passport-local": "^1.0.0",
+		"path-exists": "^4.0.0",
 		"reconnecting-websocket": "^4.4.0",
 		"sharedb": "^2.2.2",
 		"sharedb-string-binding": "^1.0.0",

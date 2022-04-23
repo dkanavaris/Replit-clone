@@ -4,6 +4,7 @@ const path = require('path');
 const ws = require("ws").Server;
 const pty = require('node-pty');
 const stripAnsi = require('strip-ansi');
+const pathExists = require('path-exists');
 
 //TODO: add semaphores so multiple users cannot save,create,delete togethen
 
@@ -127,6 +128,7 @@ exports.get_terminal = async function(req, res){
     let cursor_pos = -1;
 
     let print_custom = false;
+    let print_path = false;
     let custom_message = "";
 
     const project_name = req.params.project_name;
@@ -134,7 +136,7 @@ exports.get_terminal = async function(req, res){
     
     const root_path = process.cwd();
     let curr_path = root_path;
-    
+
     server.on('connection', (ws) => {
 
         let command = "";
@@ -202,11 +204,12 @@ exports.get_terminal = async function(req, res){
                 }
 
                 else if(obj.data == 127){ //Backspace
+
                     if(cursor_pos >= 0){
                         console.log("Cursor at ", cursor_pos)
-                        console.log("Before ", command);
+                        console.log("Before ", JSON.stringify(command));
                         command = command.substring(0, cursor_pos) + command.substring(cursor_pos + 1, command.length);
-                        console.log("After ", command);
+                        console.log("After ", JSON.stringify(command));
                         cursor_pos--;
                         tty.write(msg);
                     }
@@ -223,17 +226,40 @@ exports.get_terminal = async function(req, res){
 
                     if(command.includes("cd")){
                         command = command.split(" ");
-                        curr_path += `\\${command[1]}`;
 
+                        let temp_path = `${curr_path}/`;
+                        
+                        for(let i = 1; i < command.length - 1; i++){
+                            let index = command[i].indexOf("\\");
+                            let sub_dir = command[i].substring(0, index);
+                            temp_path += `${sub_dir} `;
+                        }
+
+                        temp_path += `${command[command.length - 1]}/`;
                         console.log(command)
                         
                         console.log(path.resolve(curr_path));
-                        curr_path = path.resolve(curr_path);
+                        temp_path = path.resolve(temp_path);
 
-                        if(is_subdir(curr_path, root_path)){
-                            console.log("Went to farsadasdsa");
+                        if(is_subdir(temp_path, root_path) || command.length == 1){
+                            custom_message = (Buffer.from(`\x1b[91mCannot navigate\x1b[m`));
+                            print_custom = true;
+                            // If the cursor is not at the end of the command move it there so the
+                            // clear takes affect.
+                            for(let i = cursor_pos; i <= (command.length - cursor_pos) + 1; i++)
+                                tty.write(keyright)
+                            
+                            tty.write(clear + newline + newline)
                         }
-                        tty.write(msg)
+
+                        else if(pathExists.sync(temp_path)){
+                            curr_path = temp_path;
+                            tty.write(msg)
+                        }
+                        
+                        else{
+                            tty.write(msg);
+                        }
                     }
 
                     // Check for unauthorized commandss
@@ -243,21 +269,19 @@ exports.get_terminal = async function(req, res){
                         // If the cursor is not at the end of the command move it there so the
                         // clear takes affect.
                         for(let i = cursor_pos; i <= (command.length - cursor_pos) + 1; i++)
-                            tty.write(keyright)
+                            tty.write(keyright);
                         
                         tty.write(clear + newline + newline)
                     }
 
                     // Check if pwd was entered
                     else if(command == "pwd"){
-                        print_custom = true
-                        let abs_path = process.cwd();
-                        let index = abs_path.indexOf(`${project_name}`);
+                        print_path = true
+                        let index = curr_path.indexOf(`${project_name}`);
                         console.log("Index is ", index);
-                        let curr_path = abs_path.substring(index, abs_path.length);
-                        console.log(`Abs ${abs_path}\nCurr ${JSON.parse(JSON.stringify(process.env))}`);
-                        custom_message = Buffer.from(curr_path);
-                        tty.write(newline)
+                        let pwd_path = curr_path.substring(index, curr_path.length);
+                        custom_message = Buffer.from(pwd_path);    
+                        tty.write(newline);
                     }
 
                     else
@@ -284,7 +308,7 @@ exports.get_terminal = async function(req, res){
 
                 //console.log(JSON.stringify(data));
 
-                //console.log(JSON.stringify(data));
+                console.log(JSON.stringify(data));
 
                 // Up or down arrow was pressed so get the new command
                 if(keypressed){
@@ -300,13 +324,41 @@ exports.get_terminal = async function(req, res){
                 else if(tab_pressed){
                     tab_pressed = false;
                     let added = stripAnsi(data.toString('utf-8'));
+                    added = added.replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove unicode characters
+
                     if(!data.includes("\r\n")){
                         command += added;
                         cursor_pos = command.length - 1;
                         ws.send(data);
                     }
                 }
-               
+                
+                // Handle pwd
+                else if(print_path){
+                    if(data.includes(BACKEND_PATH)){
+                        print_path = false;
+
+                        //data = data.replace(`${BACKEND_PATH}/${username}/${custom_message}`, custom_message);
+                        backend_index = data.indexOf(BACKEND_PATH);
+                        end_index = data.indexOf("\u001b[K", backend_index);
+                        
+                        if(end_index == -1){
+                            end_index = data.indexOf("\r\n", backend_index);
+                            if(end_index == -1)
+                                end_index = data.length;
+                        }
+
+                        console.log(backend_index);
+                        console.log(end_index);
+                        
+                        data = data.replace(data.substring(backend_index, end_index), custom_message);
+                        ws.send(data)
+                    }
+                    else{
+                        ws.send(data);
+                    }
+                }
+
                 // Custom error message
                 else if(print_custom && data.includes(`Replit Clone >`)){
                     console.log("Here1\n")
@@ -315,16 +367,6 @@ exports.get_terminal = async function(req, res){
                     print_custom = false;
                 }
                 
-                // If it is a custom message of a command that will indeed execute on the backend
-                // handle if the output was split into multiple sends
-                
-                // This handles the case where pwd was executed and the data of the path and the new 
-                // line were sent seperately
-                else if(print_custom && data.includes(BACKEND_PATH)){
-                    console.log("Here2\n")
-                    ws.send(`\x1b[1E${custom_message}\x1b[1E`);
-                    print_custom = false;
-                }
 
                 else
                     ws.send(data);
