@@ -74,9 +74,11 @@ exports.get_project_files = async function(req, res){
 }
 
 
-function is_subdir(parent, dir){
-    const relative = path.relative(parent, dir);
-    return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+function is_subdir(dir, parent){
+    // const relative = path.relative(parent, dir);
+    // console.log("relative ", relative)
+    // return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+    return !dir.includes(parent);
 }
 
 exports.get_terminal = async function(req, res){
@@ -191,6 +193,8 @@ exports.get_terminal = async function(req, res){
                 }
 
                 else if(msg.equals(tab)){
+
+                    console.log("Tab was pressed when command was ", command)
                     tab_pressed = true;
                     tty.write(msg);
                 }
@@ -224,6 +228,7 @@ exports.get_terminal = async function(req, res){
             
                     console.log("Will execute ", command);
 
+                    // Check for valid navigation
                     if(command.includes("cd")){
                         command = command.split(" ");
 
@@ -240,8 +245,11 @@ exports.get_terminal = async function(req, res){
                         
                         console.log(path.resolve(curr_path));
                         temp_path = path.resolve(temp_path);
+                        console.log(temp_path);
 
-                        if(is_subdir(temp_path, root_path) || command.length == 1){
+                        console.log(`Curr ${curr_path}\nTemp ${temp_path}\nRoot ${root_path}`);
+
+                        if(is_subdir(temp_path, root_path) || command.length == 1 || command[command.length - 1].startsWith("/") || command[command.length - 1].startsWith("~")){
                             custom_message = (Buffer.from(`\x1b[91mCannot navigate\x1b[m`));
                             print_custom = true;
                             // If the cursor is not at the end of the command move it there so the
@@ -284,8 +292,61 @@ exports.get_terminal = async function(req, res){
                         tty.write(newline);
                     }
 
-                    else
-                        tty.write(msg);
+
+                    else{
+
+                        let error = false;
+
+                        console.log(command);
+                        let sub_commands = command.split(" ");
+                        console.log(sub_commands);
+
+                        
+                        for(let i = 0; i < sub_commands.length; i++){
+                            sub_command = sub_commands[i];
+
+                            if(sub_command == ".." || sub_command.includes("/") || sub_command.includes("~")){
+
+                                if(sub_command.startsWith("/") || sub_command.startsWith("~")){
+                                    console.log("AT IF");
+                                    custom_message = (Buffer.from(`\x1b[91mInvalid Path\x1b[m`));
+                                    print_custom = true;
+                                    // If the cursor is not at the end of the command move it there so the
+                                    // clear takes affect.
+                                    for(let i = cursor_pos; i <= (command.length - cursor_pos) + 1; i++)
+                                        tty.write(keyright)
+                                    
+                                    tty.write(clear + newline + newline)
+                                    error = true;
+                                    break;
+                                }
+                                else{
+                                    console.log("At ELSE");
+                                    let temp_path = `${curr_path}/`;
+                            
+                                    
+                                    temp_path += `${sub_command}`;
+                                    temp_path = path.resolve(temp_path);
+                                    
+                                    if(is_subdir(temp_path, root_path)){
+                                        custom_message = (Buffer.from(`\x1b[91mInvalid Path\x1b[m`));
+                                        print_custom = true;
+                                        // If the cursor is not at the end of the command move it there so the
+                                        // clear takes affect.
+                                        for(let i = cursor_pos; i <= (command.length - cursor_pos) + 1; i++)
+                                            tty.write(keyright)
+                                        
+                                        tty.write(clear + newline + newline)
+                                        error = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if(!error)
+                            tty.write(msg);
+                    }
                     
                     command = "";
                     cursor_pos = -1;

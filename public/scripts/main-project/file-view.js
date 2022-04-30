@@ -60,7 +60,6 @@ async function create_terminal(){
     sock.addEventListener("open", (event) =>{
         let attach_addon = new attachAddon.AttachAddon(sock);
         term.loadAddon(attach_addon);
-        term.name = "test_path";
     });
 
     setTimeout(() =>{

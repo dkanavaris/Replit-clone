@@ -1714,6 +1714,9 @@ function createObjectIterator(obj) {
     var len = okeys.length;
     return function next() {
         var key = okeys[++i];
+        if (key === '__proto__') {
+            return next();
+        }
         return i < len ? {value: obj[key], key: key} : null;
     };
 }
@@ -11908,7 +11911,7 @@ async function create_terminal(){
         url: window.location.href + "/get_terminal",
     });
 
-    let term = new xterm.Terminal({cols:80, rows:24});
+    let term = new xterm.Terminal({cols:80, rows:15});
     let fit_addon = new fitaddon.FitAddon();
 
     term.loadAddon(fit_addon);
@@ -11922,7 +11925,6 @@ async function create_terminal(){
     sock.addEventListener("open", (event) =>{
         let attach_addon = new attachAddon.AttachAddon(sock);
         term.loadAddon(attach_addon);
-        term.name = "test_path";
     });
 
     setTimeout(() =>{
