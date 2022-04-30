@@ -195,8 +195,26 @@ exports.get_terminal = async function(req, res){
                 else if(msg.equals(tab)){
 
                     console.log("Tab was pressed when command was ", command)
-                    tab_pressed = true;
-                    tty.write(msg);
+                    let splitted = command.split(" ");
+                    let tab_command = splitted[splitted.length - 1];
+                    console.log("Tab for ", tab_command);
+                    
+                    let temp_path = `${curr_path}/`;                
+                    temp_path += `${tab_command}`;
+                    temp_path = path.resolve(temp_path);
+
+                    if(tab_command.startsWith("/") || tab_command.startsWith("~") || is_subdir(temp_path, root_path)){
+                        // If the cursor is not at the end of the command move it there so the
+                        // clear takes affect.
+                        for(let i = cursor_pos; i <= (command.length - cursor_pos) + 1; i++)
+                            tty.write(keyright)
+                    
+                    }
+
+                    else{
+                        tab_pressed = true;
+                        tty.write(msg);
+                    }
                 }
 
                 // ASCII used to determine if characters are printable check ASCII.png
@@ -308,7 +326,6 @@ exports.get_terminal = async function(req, res){
                             if(sub_command == ".." || sub_command.includes("/") || sub_command.includes("~")){
 
                                 if(sub_command.startsWith("/") || sub_command.startsWith("~")){
-                                    console.log("AT IF");
                                     custom_message = (Buffer.from(`\x1b[91mInvalid Path\x1b[m`));
                                     print_custom = true;
                                     // If the cursor is not at the end of the command move it there so the
@@ -320,8 +337,8 @@ exports.get_terminal = async function(req, res){
                                     error = true;
                                     break;
                                 }
+
                                 else{
-                                    console.log("At ELSE");
                                     let temp_path = `${curr_path}/`;
                             
                                     
