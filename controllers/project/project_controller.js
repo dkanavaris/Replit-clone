@@ -86,7 +86,7 @@ exports.get_terminal = async function(req, res){
     // Change the working directory to this project
     process.chdir(CWD + "\\users\\" + req.params.username + "\\" + req.params.project_name);
 
-    const tty = pty.spawn("wsl.exe", [], {
+    const tty = pty.spawn(TERMINAL_JSON.TERMINAL, [], {
         name: 'xterm-color',
         cols: 80,
         rows: 24,

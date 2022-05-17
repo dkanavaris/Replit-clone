@@ -1,7 +1,9 @@
 {
-    "BACKEND_PATH": "/mnt/c/Users/Jim/Desktop/Replit-clone/users",
+    "TERMINAL" : "wsl.exe",
+    "BACKEND_PATH": "PATH_TO_PROJECT_USERS_FILE", 
     "UNAUTHORIZED_COMMANDS": [
         "export",
-        "sudo python3"
+        "sudo python3",
+        "sudo"
     ]
 }
