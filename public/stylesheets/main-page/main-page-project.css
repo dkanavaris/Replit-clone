@@ -123,3 +123,7 @@ textarea,.CodeMirror, .cm-s-default{
     width: 20%;
     height: 25px;
 }
+
+.terminal{
+    margin-top: 26px;
+}
