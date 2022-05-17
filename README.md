@@ -21,3 +21,5 @@ are created upon successfull sign-up.
 To start the server run "npm start" then connect to http://localhost:3000
 
 Icons used are from : https://tabler-icons.io/
+
+![alt_text](https://github.com/dkanavaris/Replit-clone/blob/main/login.PNG)
