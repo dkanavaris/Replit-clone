@@ -7,6 +7,7 @@ const stripAnsi = require('strip-ansi');
 const pathExists = require('path-exists');
 
 //TODO: add semaphores so multiple users cannot save,create,delete togethen
+//TODO: Change the files in the DB to object instead of JSON string
 
 const TERMINAL_JSON = require("../../terminal.json");
 const BACKEND_PATH = TERMINAL_JSON.BACKEND_PATH;
@@ -29,6 +30,23 @@ exports.file_create = async function(req, res){
 
     fs.writeFileSync(filepath, "");
 
+    // Add the newly created file to the DB
+    const project_name = req.params.project_name
+    const username = req.params.username.replace("@", "");
+    const project = await Project.findOne({name: project_name, owner: username});
+
+    let files = JSON.parse(project.files);
+
+    let new_file = {
+        filepath : filepath,
+        instances_open : 0
+    };
+
+    files.push(new_file);
+    files = JSON.stringify(files);
+
+    await Project.findOneAndUpdate({name: project_name, owner: username}, {files: files});
+                                
     res.json({return:"success"});
 }
 
@@ -55,6 +73,25 @@ exports.save_file = async function(req, res){
     console.log("File saved! at " + filepath);
 }
 
+exports.close_file = async function(req, res){
+    
+    // This file was closed so decrement the instances_open field.
+    const project_name = req.params.project_name
+    const username = req.params.username.replace("@", "");
+    const project = await Project.findOne({name: project_name, owner: username});
+
+    let files = JSON.parse(project.files);
+
+    let index = files.findIndex(t => t.filepath == filepath);
+    files[index].instances_open -= 1;
+
+    files = JSON.stringify(files);
+
+    await Project.findOneAndUpdate({name: project_name, owner: username}, {files: files});
+                                
+    res.json({return:"success"});
+}
+
 exports.get_file = async function(req, res){
 
     let path = await get_path(req);
@@ -64,6 +101,21 @@ exports.get_file = async function(req, res){
 
     let file_data = fs.readFileSync(filepath, 'utf-8');
 
+
+    // This file was opened so increment the instances_open field.
+    const project_name = req.params.project_name
+    const username = req.params.username.replace("@", "");
+    const project = await Project.findOne({name: project_name, owner: username});
+
+    let files = JSON.parse(project.files);
+
+    let index = files.findIndex(t => t.filepath == filepath);
+    files[index].instances_open += 1;
+
+    files = JSON.stringify(files);
+
+    await Project.findOneAndUpdate({name: project_name, owner: username}, {files: files});
+                                
     res.json({file_data: file_data});
 }
 

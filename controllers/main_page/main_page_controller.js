@@ -42,7 +42,8 @@ exports.main_page_create_project = async function(req, res){
     const new_project = new Project({
         owner : res.locals.currentUser.username,
         path : project_path,
-        name : req.body.project_name  
+        name : req.body.project_name,
+        files: JSON.stringify([])
     }).save(err =>{
         if(err){
             return next(err);
