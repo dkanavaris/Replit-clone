@@ -5,6 +5,8 @@ const router = express.Router();
 
 router.get("/:username/:project_name/get_file/:path*", project_controller.get_file);
 
+router.post("/:username/:project_name/close_file/:path*", project_controller.close_file);
+
 router.get("/:username/:project_name/get_project_files", project_controller.get_project_files);
 
 router.get("/:username/:project_name/get_terminal", project_controller.get_terminal);

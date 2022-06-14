@@ -2,6 +2,7 @@
  * Code used for file view actions .
  *=========================================================================== */
 let sharedb = require('sharedb/lib/client');
+let current_file_open = ""
 // Open WebSocket connection to ShareDB server
 let ReconnectingWebSocket = require('reconnecting-websocket');
 let otText = require('ot-text');
@@ -9,6 +10,7 @@ let otText = require('ot-text');
 let xterm = require('xterm');
 let fitaddon = require('xterm-addon-fit');
 let attachAddon = require('xterm-addon-attach');
+const { default: axios } = require('axios');
 
 let doc; // Doc must be global. This doc is used by the editor
 let file_view_doc;
@@ -103,6 +105,15 @@ async function get_project_data(){
 
 async function get_file_data(filepath){
 
+    // Close the old file
+    if(current_file_open !== ""){
+        await axios({
+            method: 'post',
+            url: window.location.href + "/close_file/" + current_file_open,
+        });
+    }
+
+    //TODO: close old file
     let data = await axios({
         method: 'get',
         url: window.location.href + "/get_file/" + filepath,
@@ -320,6 +331,7 @@ function display_data(e){
         let url = window.location.href.split("/");
         let user = url[url.length - 2];
         let file = filepath;
+        current_file_open = file
 
         // Unsubscribe from the previous doc to stop listening for changes
         if(typeof doc !== 'undefined'){

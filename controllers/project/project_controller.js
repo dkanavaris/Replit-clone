@@ -75,6 +75,11 @@ exports.save_file = async function(req, res){
 
 exports.close_file = async function(req, res){
     
+    let path = await get_path(req);
+
+    const filepath = path + "\\" +
+                        req.params.path + req.params[0];
+
     // This file was closed so decrement the instances_open field.
     const project_name = req.params.project_name
     const username = req.params.username.replace("@", "");
@@ -82,11 +87,11 @@ exports.close_file = async function(req, res){
 
     let files = JSON.parse(project.files);
 
-    let index = files.findIndex(t => t.filepath == filepath);
+    let index = files.findIndex(t => t.filepath === filepath);
     files[index].instances_open -= 1;
 
     files = JSON.stringify(files);
-
+    
     await Project.findOneAndUpdate({name: project_name, owner: username}, {files: files});
                                 
     res.json({return:"success"});
@@ -111,6 +116,8 @@ exports.get_file = async function(req, res){
 
     let index = files.findIndex(t => t.filepath == filepath);
     files[index].instances_open += 1;
+
+    console.log(files)
 
     files = JSON.stringify(files);
 
