@@ -17,6 +17,10 @@ router.post("/:username/:project_name/file_create/:filepath*", project_controlle
 
 router.post("/:username/:project_name/folder_create/:folderpath*", project_controller.folder_create);
 
+router.post("/:username/:project_name/delete/:filepath*", project_controller.delete_file);
+
+router.post("/:username/:project_name/rename/:filename/:filepath*", project_controller.rename_file);
+
 router.get("/:username/:project_name", project_controller.main_page_project);
 
 
