@@ -124,36 +124,6 @@ textarea,.CodeMirror, .cm-s-default{
     height: 25px;
 }
 
-.rename-input-error-container{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: rgba(255, 0, 0, 0.5);
-    width: 80%;
-
-}
-
-.rename-input-container{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.rename-input-container input{
-    font-size: 16px;
-    width: 80%;
-    height: 25px;
-}
-
-.rename-input-container button{
-    border: 2px solid black;
-    border-radius: 2px;
-    width: 20%;
-    height: 25px;
-}
-
 .terminal{
     margin-top: 26px;
 }

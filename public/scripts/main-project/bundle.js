@@ -14138,7 +14138,6 @@ function display_data(e){
         // Fetch the doc's data
         doc.fetch(function(e){
             // First time we fetch this doc from the server
-            console.log(doc);
             if(doc.version == 0){
                 doc.create({content: response.data.file_data});
             }
@@ -14248,18 +14247,8 @@ const file_add_button = document.querySelector("#file_plus");
 const folder_add_button = document.querySelector("#folder_plus");
 const create_button = document.querySelector("#create");
 const input_text = document.querySelector("#input_text");
-const rename_input_text = document.querySelector("#rename_input_text");
-
 const input_container = document.querySelector(".input-container");
-const rename_input_container = document.querySelector(".rename-input-container");
 const input_error_container = document.querySelector(".input-error-container");
-
-const rename_input_error_container = document.querySelector(".rename-input-error-container");
-
-const delete_file_button = document.querySelector("#delete_file");
-
-const rename_icon = document.querySelector("#rename-icon");
-const rename_button = document.querySelector("#rename");
 
 /* Type holds the information if there is a file or
  * a directory created */
@@ -14276,12 +14265,6 @@ file_add_button.addEventListener("click", add_file);
 folder_add_button.addEventListener("click", add_folder);
 create_button.addEventListener("click", create_request);
 input_text.addEventListener("input", check_input);
-rename_input_text.addEventListener("input", check_rename_input);
-
-delete_file_button.addEventListener("click", delete_file);
-
-rename_icon.addEventListener("click", show_rename_dialog);
-rename_button.addEventListener("click", rename_file);
 
 function show_input_error(error_msg){
     input_error_container.textContent = error_msg;
@@ -14290,25 +14273,12 @@ function show_input_error(error_msg){
     create_button.disabled = true;
 }
 
-function show_rename_input_error(error_msg){
-    rename_input_error_container.textContent = error_msg;
-    rename_input_error_container.style.display = "flex";
-
-    rename_button.disabled = true;
-}
-
-function hide_rename_input_error(type){
-    rename_input_error_container.style.display = "none";
-    rename_button.disabled = false;
-}
-
 function hide_input_error(type){
     input_error_container.style.display = "none";
     create_button.disabled = false;
 }
 
 function check_input(e){
-
     let text = input_text.value;
     let dir;
 
@@ -14325,54 +14295,18 @@ function check_input(e){
     }
 
     for(let i = 0; i < dir.length; i++){
-        console.log("Going thourgh")
         //Search for the file or folder name.
         let name;
         let index = dir[i].id.lastIndexOf("\\");
         name = dir[i].id.substring(index + 1, dir[i].id.length);
         
 
-        if(name == text){
-            console.log("I will show error")
-            show_input_error(`${name} already exists`);
+        if(name == text && type == dir[i].className){
+            show_input_error(`${type}  : ${name} already exists`);
             return;
         }
         else{
             hide_input_error();
-        }
-    }
-}
-
-function check_rename_input(e){
-
-    let text = rename_input_text.value;
-    let dir;
-
-    if(last_visited.parentNode.id != ""){
-        //If a a directory was the last visited element then 
-        // get the children of the sub directory.
-        if(last_visited.className == "contents")
-            dir = last_visited.parentNode.children[1].children;
-        else // Else a file of a sub_dir was clicked so get the siblings
-            dir = last_visited.parentNode.children;
-    }
-    else{
-        dir = project_files.children;
-    }
-
-    for(let i = 0; i < dir.length; i++){
-        console.log("Going thourgh for rename")
-        //Search for the file or folder name.
-        let name;
-        let index = dir[i].id.lastIndexOf("\\");
-        name = dir[i].id.substring(index + 1, dir[i].id.length);
-        
-        if(name == text){
-            show_rename_input_error(`${name} already exists`);
-            return;
-        }
-        else{
-            hide_rename_input_error();
         }
     }
 }
@@ -14453,147 +14387,4 @@ function add_folder(){
         input_container.style.display = "none";
     
 }
-
-async function delete_file(){
-    
-    let to_be_deleted;
-    let flag =  false;
-    console.log("Last visited ", last_visited.id);
-    console.log("Currently open ", current_file_open);
-
-    if(current_file_open != "" && current_file_open == last_visited.id){
-        console.log("Here")
-        flag = true;
-        to_be_deleted = last_visited.id;
-    }
-    else{
-        console.log("There")
-        to_be_deleted = last_visited.parentElement.id;
-    }
-
-
-    console.log("Requested to delete ", to_be_deleted);
-
-    await axios({
-        method: 'post',
-        url: window.location.href + "/delete/" + to_be_deleted,
-    });
-
-    file_view_doc.submitOp([{p: ['content'], oi: "new"}]);
-    last_visited = project_files;
-
-    if(flag){
-        let user = url[url.length - 2];
-        let socket = new ReconnectingWebSocket("ws://" + location.host + `/${user}/${to_be_deleted}`);
-        let connection = new sharedb.Connection(socket);
-        doc = connection.get(user, to_be_deleted);
-        
-        doc.fetch(() => {
-            if(doc.data){
-
-            // Pass the editor change to the doc
-            let content = {
-                data : "",
-                change : null,
-                user : document.querySelector(".username").textContent.trim()
-            }
-            doc.submitOp([{p: ['content'], oi: content}]);
-        
-            }
-        })
-
-        current_file_open = "";
-        document.querySelector(".open-files").textContent = ""
-        const text_editor = document.querySelector("#editor");
-        if(myCodeMirror != null)
-            myCodeMirror.toTextArea();
-        text_editor.value = "";
-        myCodeMirror = CodeMirror.fromTextArea(text_editor);
-    }
-}
-
-async function show_rename_dialog(){
-    
-
-    if(rename_input_container.style.display == "none"){
-        rename_input_container.style.display = "flex";
-        check_rename_input(this);
-    }
-    else
-        rename_input_container.style.display = "none";
-
-    
-    
-    // let to_be_renamed;
-    // console.log("Last visited ", last_visited.id);
-    // console.log("Currently open ", current_file_open);
-
-    // if(current_file_open != "" && current_file_open == last_visited.id){
-    //     console.log("Here")
-    //     to_be_renamed = last_visited.id;
-    // }
-    // else{
-    //     console.log("There")
-    //     to_be_renamed = last_visited.parentElement.id;
-    // }
-
-
-    // console.log("Requested to renamed ", to_be_renamed);
-
-    // // await axios({
-    // //     method: 'post',
-    // //     url: window.location.href + "/rename/" + to_be_renamed,
-    // // });
-    // // file_view_doc.submitOp([{p: ['content'], oi: "new"}]);
-}
-
-async function rename_file(){
-
-    let to_be_renamed;
-    let flag = false;
-    console.log("Last visited ", last_visited.id);
-    console.log("Currently open ", current_file_open);
-
-    if(current_file_open != "" && current_file_open == last_visited.id){
-        flag = true;
-        to_be_renamed = last_visited.id;
-    }
-    else{
-        to_be_renamed = last_visited.parentElement.id;
-    }
-
-
-    console.log(`"Requested to rename  ${to_be_renamed} to ${rename_input_text.value}`);
-    await axios({
-        method: 'post',
-        url: window.location.href + "/rename/" + rename_input_text.value + "/" + to_be_renamed,
-    });
-    
-    file_view_doc.submitOp([{p: ['content'], oi: "new"}]);
-
-    if(flag){
-        document.querySelector(".open-files").textContent = ""
-        const text_editor = document.querySelector("#editor");
-        if(myCodeMirror != null)
-            myCodeMirror.toTextArea();
-        text_editor.value = "";
-        myCodeMirror = CodeMirror.fromTextArea(text_editor);
-    }
-
-    return 0;
-}
-
-// Close the file open on page leave
-window.addEventListener("beforeunload", async function(e) {
-
-    // Close the old file
-    if(current_file_open !== ""){
-        await axios({
-            method: 'post',
-            url: window.location.href + "/close_file/" + current_file_open,
-        });
-    }
-    e.preventDefault(); //per the standard
-    e.returnValue = ''; //required for Chrome
-});
 },{"axios":2,"ot-text":39,"reconnecting-websocket":42,"sharedb/lib/client":45,"xterm":67,"xterm-addon-attach":65,"xterm-addon-fit":66}]},{},[68]);
