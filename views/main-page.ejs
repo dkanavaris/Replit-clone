@@ -23,7 +23,7 @@
 		</div>
 		<div class = "main-body">
 			<button id="create-button">Create a new Project</button>
-
+			<button id="delete-button">Delete existing Project</button>
 			<div class ="existing_projects">
 				Open an existing Project
 				<ul>
@@ -46,6 +46,19 @@
 				</form>
 			</div>
 		</div>
+
+		<div class = "delete-modal">
+			<div class = "delete-modal-content">
+				<span class="delete-close-modal">&times;</span>
+				<form method="POST" action="/main-page/delete">
+					<label for ="delete-project-name">Project Name: 
+						<input id="delete_project-name" name="delete_project_name" type="text">
+					</label>
+					<button type="submit">Delete project</button>
+				</form>
+			</div>
+		</div>
+
 	</body>
 	<script src="/scripts/main-page/modal.js"></script>
 </html>

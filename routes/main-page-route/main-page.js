@@ -9,4 +9,6 @@ router.get('/', main_page_controller.main_page_get);
 
 router.post('/', main_page_controller.main_page_create_project);
 
+router.post('/delete', main_page_controller.main_page_delete_project);
+
 module.exports = router;

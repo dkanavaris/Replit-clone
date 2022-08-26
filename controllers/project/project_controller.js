@@ -18,12 +18,19 @@ async function get_path(req){
     const project_name = req.params.project_name
     const username = req.params.username.replace("@", "");
     const project_path = await Project.findOne({name: project_name, owner: username});
+
+    if(!project_path)
+        return false;
+
     return project_path.path;
 }
 
 exports.file_create = async function(req, res){
 
     let path = await get_path(req);
+    
+    if(path == false)
+        return res.redirect("/main-page");
 
     const filepath =  path + "\\" +
                     req.params.filepath + req.params[0];
@@ -53,6 +60,8 @@ exports.file_create = async function(req, res){
 exports.folder_create = async function(req, res){
 
     let path = await get_path(req);
+    if(path == false)
+        return res.redirect("/main-page");
 
     path = path + "\\" +
     req.params.folderpath + req.params[0];
@@ -66,6 +75,9 @@ exports.save_file = async function(req, res){
 
     let path = await get_path(req);
 
+    if(path == false)
+        return res.redirect("/main-page");
+
     const filepath =  path + "\\" +
         req.params.filepath + req.params[0];
 
@@ -76,7 +88,10 @@ exports.save_file = async function(req, res){
 exports.close_file = async function(req, res){
     
     let path = await get_path(req);
-
+    
+    if(path == false)
+        return res.redirect("/main-page");
+    
     const filepath = path + "\\" +
                         req.params.path + req.params[0];
 
@@ -101,6 +116,11 @@ exports.get_file = async function(req, res){
 
     let path = await get_path(req);
 
+    if(path == false){
+        res.redirect("/main-page");
+        return 
+    }
+    
     const filepath = path + "\\" +
                         req.params.path + req.params[0];
 
@@ -129,6 +149,10 @@ exports.get_file = async function(req, res){
 exports.get_project_files = async function(req, res){
 
     let path = await get_path(req);
+
+    if(path == false)
+        return res.redirect("/main-page");
+
     res.json(dirTree(path));
 }
 
