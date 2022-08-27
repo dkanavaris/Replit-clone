@@ -21,7 +21,7 @@
 		"express-session": "^1.17.2",
 		"http-errors": "~1.6.3",
 		"keycode": "^2.2.1",
-		"mongoose": "^6.0.12",
+		"mongoose": "^6.4.6",
 		"morgan": "~1.9.1",
 		"node-pty": "^0.10.1",
 		"nodemon": "^2.0.14",
