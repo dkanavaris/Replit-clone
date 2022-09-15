@@ -57,6 +57,197 @@ exports.file_create = async function(req, res){
     res.json({return:"success"});
 }
 
+
+//TODO: Add delete file function. When deleting a file just delete it
+    // If no other instance is open (1 instance open for this file). If the selected file is dir get the contents and
+// check if no instance of the contents is open (0 instances open for every sub-dir/file).
+// Checking for number of instances open should be done through a function in order for those functions
+// to be reused by rename and move.
+
+exports.delete_file = async function (req , res){
+
+    let path = await get_path(req);
+
+    const filepath =  path + "\\" +
+                    req.params.filepath + req.params[0];
+
+    // Add the newly created file to the DB
+    const project_name = req.params.project_name
+    const username = req.params.username.replace("@", "");
+    const project = await Project.findOne({name: project_name, owner: username});
+
+    let files = JSON.parse(project.files);
+
+    let index = files.findIndex(t => t.filepath === filepath);
+    
+    
+    if(index >= 0){
+        to_be_renamed = files[index];
+        //console.log("To be deleted is at index ", index);
+        //console.log(files);
+
+        if(!fs.lstatSync(to_be_renamed.filepath).isDirectory() ){
+            if(to_be_renamed.instances_open != 1){
+                return res.json({return:"error"});
+            }
+
+            fs.unlinkSync(filepath);
+            files.splice(index, 1);
+        }
+    }
+
+    else{
+        console.log("I will delete ", filepath)
+
+        // User requested the deletion of a folder.
+        // Search and see if there any open files (instances_open > 0) that contain the 
+        // path @filepath
+        let checking = check_folder(filepath, files);
+
+        if(checking){
+
+            // Remove all files that contain filepath
+            let deleted = false;
+            do{
+                deleted = delete_files(files, filepath);
+            }while(deleted == true);
+
+            fs.rmdirSync(filepath);
+        }
+    }
+
+    console.log(files);
+    files = JSON.stringify(files);
+    
+    await Project.findOneAndUpdate({name: project_name, owner: username}, {files: files});
+                                
+    res.json({return:"success"});
+}
+
+exports.rename_file = async function (req , res){
+
+    let path = await get_path(req);
+
+    const new_name = req.params.filename;
+    const filepath =  path + "\\" +
+                    req.params.filepath + req.params[0];
+
+    
+    console.log(`Requested to rename ${filepath} to ${new_name}`);
+    
+    // Add the newly created file to the DB
+    const project_name = req.params.project_name
+    const username = req.params.username.replace("@", "");
+    const project = await Project.findOne({name: project_name, owner: username});
+
+    let files = JSON.parse(project.files);
+
+    let index = files.findIndex(t => t.filepath === filepath);
+    
+    if(index >= 0){
+        to_be_renamed = files[index];
+        //console.log("To be deleted is at index ", index);
+        //console.log(files);
+
+        if(!fs.lstatSync(to_be_renamed.filepath).isDirectory() ){
+            if(to_be_renamed.instances_open != 1){
+                return res.json({return:"error"});
+            }
+
+            let index = to_be_renamed.filepath.lastIndexOf("/");
+            let new_file_path;
+            if(index < 0){
+                new_file_path = path + "\\" + new_name;
+            }
+            else{
+                new_file_path = to_be_renamed.filepath.substring(0, index) + "/" + new_name;
+            }
+
+            fs.renameSync(to_be_renamed.filepath, new_file_path);
+            to_be_renamed.filepath = new_file_path;
+            to_be_renamed.instances_open = 0;
+        }
+    }
+
+    else{
+        console.log("Requested to rename ", filepath);
+
+        // User requested to rename of a folder.
+        // Search and see if there any open files (instances_open > 0) that contain the 
+        // path @filepath
+        let checking = check_folder(filepath, files);
+        
+        let index = filepath.lastIndexOf("/");
+        let new_file_path = filepath.substring(0, index) + "/" + new_name;
+        if(index < 0){
+            new_file_path = path + "\\" + new_name;
+        }
+        else{
+            new_file_path = filepath.substring(0, index) + "/" + new_name;
+        }
+
+        console.log(`Will rename ${filepath} to ${new_file_path}`);
+        if(checking){
+            let renamed = false
+            do{
+                renamed = rename_files(files, filepath, new_file_path);
+            }while(renamed == true)
+
+            fs.renameSync(filepath, new_file_path);
+        }
+
+    }
+
+    console.log(files);
+    files = JSON.stringify(files);
+    
+    await Project.findOneAndUpdate({name: project_name, owner: username}, {files: files});
+                                
+    res.json({return:"success"});
+}
+
+function rename_files(files, filepath, new_filepath){
+
+    for(let i = 0; i < files.length; i++){
+        let file = files[i];
+
+        if(file.filepath.includes(filepath)){
+            
+            file.filepath = file.filepath.replace(filepath, new_filepath)
+            return true;
+        }
+    }
+    return false;
+}
+
+function delete_files(files, filepath){
+
+    for(let i = 0; i < files.length; i++){
+        let file = files[i];
+
+        if(file.filepath.includes(filepath)){
+            fs.unlinkSync(file.filepath);
+            files.splice(i, 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+function check_folder(filepath, files){
+
+    console.log("Checking ", filepath)
+    console.log("on ", files);
+
+    for(let i = 0; i < files.length; i++){
+        let file = files[i];
+        if(file.filepath.includes(filepath) && file.instances_open != 0)
+            return false;
+    }
+
+    return true;
+}
+
 exports.folder_create = async function(req, res){
 
     let path = await get_path(req);
@@ -103,6 +294,11 @@ exports.close_file = async function(req, res){
     let files = JSON.parse(project.files);
 
     let index = files.findIndex(t => t.filepath === filepath);
+
+    if(index < 0){
+        return res.json({return:"success"});
+    }
+
     files[index].instances_open -= 1;
 
     files = JSON.stringify(files);
