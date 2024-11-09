@@ -17,6 +17,23 @@ Also a directory named "users" must be created at the current directory. In this
 a sub-directory is created for each user where projects will be stored. The sub-directories
 are created upon successfull sign-up.
 
+
+## Docker
+
+You can run the application within a docker container
+To do that run
+
+```bash
+docker-compose up -d
+```
+
+And wait for the build and deployment to finish
+
+If you widh to only build run
+```bash
+docker-compose build
+```
+
 ## Execution
 To start the server run "npm start" then connect to http://localhost:3000
 
