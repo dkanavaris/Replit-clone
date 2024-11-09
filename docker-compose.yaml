@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+
+  replit-clone:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    image:  replit-clone:1.0
+    container_name:  replit-clone
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # - MONGO_USERNAME=${MONGO_USERNAME}
+      # - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_HOSTNAME=${DATABASE_TYPE}
+      - MONGO_PORT=27017
+      - MONGO_DB=${DATABASE}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/opt/app
+      - node_modules:/opt/app/node_modules
+    networks:
+      - app-network
+
+  replit-clone-db:
+    image: mongo:4.4.6
+    container_name: replit-clone-db
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    env_file: .env
+    environment:
+      # - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      # - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_DATABASE=${DATABASE}
+    volumes:     
+      - dbdata_replit_clone:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - app-network  
+networks:
+  app-network:
+    driver: bridge
+    
+volumes:
+  dbdata_replit_clone:
+  node_modules:
